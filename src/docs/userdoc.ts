@@ -1,150 +1,45 @@
 /**
  * @swagger
- * components:
- *   schemas:
- *     User:
- *       type: object
- *       required:
- *         - name
- *         - email
- *         - password
- *       properties:
- *         user_id:
- *           type: integer
- *           description: The unique identifier for a user.
- *         name:
- *           type: string
- *           description: The full name of the user.
- *         email:
- *           type: string
- *           format: email
- *           description: The email address of the user.
- *         password:
- *           type: string
- *           description: The user's account password.
- *         role:
- *           type: string
- *           description: The role of the user (e.g., CLIENT, ADMIN).
- *         phone_number:
- *           type: string
- *           description: The user's phone number.
- *         address:
- *           type: string
- *           description: The user's address.
- *         profile_picture:
- *           type: string
- *           description: The URL of the user's profile picture.
- *         gender:
- *           type: string
- *           description: The user's gender.
- * 
- *   responses:
- *     UserNotFound:
- *       description: User not found
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               message:
- *                 type: string
- *                 example: "User not found"
- *     ValidationError:
- *       description: Validation error
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               errors:
- *                 type: array
- *                 items:
- *                   type: object
- *                   properties:
- *                     msg:
- *                       type: string
- *                     param:
- *                       type: string
- *     UserDeleted:
- *       description: User(s) deleted successfully
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               message:
- *                 type: string
- *                 example: "User(s) deleted successfully"
- *     UserRegistered:
- *       description: User registered successfully
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               message:
- *                 type: string
- *                 example: "User registered successfully"
- *               token:
- *                 type: string
- *     UserProfileUpdated:
- *       description: Profile updated successfully
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               message:
- *                 type: string
- *                 example: "Profile updated successfully"
- * 
- *   parameters:
- *     UserIdParam:
- *       in: path
- *       name: id
- *       required: true
- *       description: The unique ID of the user
- *       schema:
- *         type: integer
- * 
+ * tags:
+ *   name: User
+ *   description: Endpoints related to managing users
+ */
+
+/**
+ * @swagger
  * /api/user/register:
  *   post:
  *     summary: Register a new user
- *     operationId: registerUser
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/User'
- *     responses:
- *       201:
- *         $ref: '#/components/responses/UserRegistered'
- *       400:
- *         $ref: '#/components/responses/ValidationError'
- * 
- * /api/user/login:
- *   post:
- *     summary: Log in an existing user
- *     operationId: loginUser
+ *     tags: [User]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - email
- *               - password
  *             properties:
+ *               name:
+ *                 type: string
  *               email:
  *                 type: string
- *                 format: email
  *               password:
  *                 type: string
+ *               role:
+ *                 type: string
+ *                 enum: [artist, client, admin]
+ *                 default: client
+ *               phone_number:
+ *                 type: string
+ *                 nullable: true
+ *               address:
+ *                 type: string
+ *                 nullable: true
+ *               gender:
+ *                 type: string
+ *                 nullable: true
  *     responses:
- *       200:
- *         description: Login successful
+ *       '201':
+ *         description: User registered successfully
  *         content:
  *           application/json:
  *             schema:
@@ -154,8 +49,39 @@
  *                   type: string
  *                 token:
  *                   type: string
- *       401:
- *         description: Invalid credentials
+ *       '400':
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 errors:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ */
+
+/**
+ * @swagger
+ * /api/user/login:
+ *   post:
+ *     summary: User login
+ *     tags: [User]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       '200':
+ *         description: User login successful
  *         content:
  *           application/json:
  *             schema:
@@ -163,48 +89,158 @@
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Invalid email or password"
- * 
+ *                 token:
+ *                   type: string
+ *       '400':
+ *         description: Invalid credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Invalid credentials"
+ */
+
+/**
+ * @swagger
  * /api/user/all-users:
  *   get:
  *     summary: Retrieve all users
- *     operationId: getAllUsers
+ *     tags: [User]
  *     responses:
- *       200:
- *         description: A list of all users
+ *       '200':
+ *         description: List of all users
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/User'
- *   delete:
- *     summary: Delete all users
- *     operationId: deleteAllUsers
- *     responses:
- *       200:
- *         $ref: '#/components/responses/UserDeleted'
- * 
- * /api/user/profile/{id}:
- *   get:
- *     summary: Retrieve user profile by ID
- *     operationId: getProfileById
- *     parameters:
- *       - $ref: '#/components/parameters/UserIdParam'
- *     responses:
- *       200:
- *         description: The user profile
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
- *       404:
- *         $ref: '#/components/responses/UserNotFound'
+ *               type: object
+ *               properties:
+ *                 users:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       user_id:
+ *                         type: integer
+ *                       name:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                       role:
+ *                         type: string
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                       updated_at:
+ *                         type: string
+ *                         format: date-time
+ */
+
+/**
+ * @swagger
+ * /api/user/update-profile/{id}:
  *   put:
- *     summary: Update user profile
- *     operationId: updateProfile
+ *     summary: Update user profile by ID
+ *     tags: [User]
  *     parameters:
- *       - $ref: '#/components/parameters/UserIdParam'
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: ID of the user to update
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               role:
+ *                 type: string
+ *                 enum: [artist, client, admin]
+ *                 default: client
+ *               phone_number:
+ *                 type: string
+ *                 nullable: true
+ *               address:
+ *                 type: string
+ *                 nullable: true
+ *               gender:
+ *                 type: string
+ *                 nullable: true
+ *     responses:
+ *       '200':
+ *         description: Profile updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     user_id:
+ *                       type: integer
+ *                     name:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     role:
+ *                       type: string
+ *                     phone_number:
+ *                       type: string
+ *                     address:
+ *                       type: string
+ *                     gender:
+ *                       type: string
+ *       '400':
+ *         description: Invalid user ID format or validation errors
+ *       '403':
+ *         description: Forbidden (Only user or Admin can update the profile)
+ *       '404':
+ *         description: User not found
+ */
+
+/**
+ * @swagger
+ * /api/user/delete-all-users:
+ *   delete:
+ *     summary: Delete all users (Admin only)
+ *     tags: [User]
+ *     responses:
+ *       '200':
+ *         description: Users deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 deletedCount:
+ *                   type: integer
+ *       '403':
+ *         description: Forbidden (Only Admin can delete all users)
+ */
+
+/**
+ * @swagger
+ * /api/user/update-profile/{id}:
+ *   put:
+ *     summary: Update user profile by ID
+ *     tags: [User]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: ID of the user to update
+ *         schema:
+ *           type: integer
  *     requestBody:
  *       required: true
  *       content:
@@ -218,12 +254,126 @@
  *                 type: string
  *               email:
  *                 type: string
- *                 format: email
  *     responses:
- *       200:
- *         $ref: '#/components/responses/UserProfileUpdated'
- *       400:
- *         $ref: '#/components/responses/ValidationError'
- *       404:
- *         $ref: '#/components/responses/UserNotFound'
+ *       '200':
+ *         description: Profile updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     user_id:
+ *                       type: integer
+ *                     name:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *       '400':
+ *         description: Invalid user ID format or validation errors
+ *       '403':
+ *         description: Forbidden (Only user or Admin can update the profile)
+ *       '404':
+ *         description: User not found
+ */
+
+/**
+ * @swagger
+ * /api/user/delete-profile/{id}:
+ *   delete:
+ *     summary: Delete user profile by ID
+ *     tags: [User]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: ID of the user to delete
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       '200':
+ *         description: Profile deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       '400':
+ *         description: Invalid user ID format
+ *       '404':
+ *         description: User not found
+ */
+
+/**
+ * @swagger
+ * /api/user/forget-password:
+ *   post:
+ *     summary: Request password reset link
+ *     tags: [User]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *     responses:
+ *       '200':
+ *         description: Password reset link sent
+ *       '400':
+ *         description: Invalid email or user not found
+ */
+
+/**
+ * @swagger
+ * /api/user/verify-otp:
+ *   post:
+ *     summary: Verify OTP for password reset
+ *     tags: [User]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               otp:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *     responses:
+ *       '200':
+ *         description: OTP verified successfully
+ *       '400':
+ *         description: Invalid OTP or expired OTP
+ */
+
+/**
+ * @swagger
+ * /api/user/reset-password:
+ *   post:
+ *     summary: Reset user password
+ *     tags: [User]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *     responses:
+ *       '200':
+ *         description: Password reset successfully
+ *       '400':
+ *         description: Invalid email or password format
  */

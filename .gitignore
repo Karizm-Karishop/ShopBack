@@ -2,4 +2,6 @@ node_modules/
 .env
 dist/
 src/output.log
+uploads/
 coverage/
+git rm -r --cached uploads/
