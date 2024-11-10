@@ -6,6 +6,7 @@ export class DbConnection {
   private static dbConnection = new DataSource({
     type: 'postgres',
     logging: false,
+    ssl: config.ssl,
     synchronize: true,
     host: config.host,
     port: Number(config.port as string),
