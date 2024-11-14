@@ -5,6 +5,8 @@ import swaggerUi from 'swagger-ui-express';
 import 'reflect-metadata';
 import swaggerSpec from './docs/swaggerconfig';
 import cors from 'cors';
+import roleRoutes from './routes/RoleRoutes';
+import permissionsRoutes from './routes/PermissionRoutes';
 
 const app: Application = express();
 
@@ -18,6 +20,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use('/api/user/', userRoutes);
+app.use('/api/roles/', roleRoutes);
+app.use('/api/permissions/', permissionsRoutes);
 app.get('/', (req: Request, res: Response) => {
   res.status(200).json({ message: 'Welcome To The Kari shop Backend Api' });
 });
