@@ -5,10 +5,20 @@ import UserModel, { UserRole } from '../database/models/UserModel';
 import dbConnection from '../database';
 import { body, validationResult } from 'express-validator';
 import dotenv from 'dotenv';
+import nodemailer from 'nodemailer'
 dotenv.config();
 const userRepository = dbConnection.getRepository(UserModel);
 import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/jwt.config';
-
+import { OtpService } from '../services/OtpService';
+import { OtpToken } from '../database/models/OtpToken';
+import { log } from 'console';
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER, 
+    pass: process.env.EMAIL_PASS 
+  }
+});
 interface ApiResponse<T> {
   success: boolean;
   data?: T;
@@ -26,7 +36,6 @@ const excludePassword = (user: any) => {
   const { password, ...userWithoutPassword } = user;
   return userWithoutPassword;
 };
-
 const errorHandler = (fn: ExpressHandler): ExpressHandler => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -37,7 +46,7 @@ const errorHandler = (fn: ExpressHandler): ExpressHandler => {
         success: false,
         error: error instanceof Error ? error.message : 'Internal server error'
       };
-      
+
       if (error instanceof Error) {
         switch (error.name) {
           case 'ValidationError':
@@ -113,9 +122,24 @@ class UserController {
       { expiresIn: JWT_EXPIRES_IN }
     );
 
+    const mailOptions = {
+      from: process.env.EMAIL_USER, 
+      to: email,                 
+      subject: 'Account Registration Confirmation',
+      text: `Hello ${name},\n\nThank you for registering with our service. Your account has been created successfully.\n\nBest regards,\nYour Company Team`
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error('Error sending confirmation email:', error);
+        return;
+      }
+      console.log('Confirmation email sent:', info.response);
+    });
+
     res.status(201).json({
       success: true,
-      message: 'User registered successfully',
+      message: 'User registered successfully. A confirmation email has been sent.',
       data: {
         user: excludePassword(user),
         token
@@ -138,6 +162,7 @@ class UserController {
     }
 
     const { email, password } = req.body;
+    console.log("user Info",req)
 
     const user = await userRepository.findOne({ where: { email } });
     if (!user) {
@@ -336,6 +361,162 @@ class UserController {
       data: { user }
     });
   });
+  static requestPasswordReset: ExpressHandler = errorHandler(async (req: Request, res: Response) => {
+    const { email } = req.body;
+  
+    await body('email').isEmail().withMessage('Invalid email').run(req);
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({
+        success: false,
+        errors: errors.array()
+      });
+      return; 
+    }
+  
+    const user = await userRepository.findOne({ where: { email } });
+    if (!user) {
+      res.status(200).json({
+        success: true,
+        message: 'If the email exists, an OTP will be sent'
+      });
+      return;
+    }
+  
+    const otpService = new OtpService(
+      dbConnection.getRepository(OtpToken),
+      userRepository
+    );
+  
+    try {
+      await otpService.generateAndSendOTP(user);
+      res.status(200).json({
+        success: true,
+        message: 'If the email exists, an OTP will be sent'
+      });
+    } catch (error: any) {
+      res.status(429).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+  
+
+  static verifyOTP: ExpressHandler = errorHandler(async (req: Request, res: Response) => {
+    const { email, otp } = req.body;
+  
+    await body('email').isEmail().withMessage('Invalid email').run(req);
+    await body('otp').isLength({ min: 6, max: 6 }).isNumeric().run(req);
+  
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({
+        success: false,
+        errors: errors.array(),
+      });
+      return; 
+    }
+  
+    const user = await userRepository.findOne({ where: { email } });
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        error: 'Invalid email or OTP',
+      });
+      return;
+    }
+  
+    const otpService = new OtpService(
+      dbConnection.getRepository(OtpToken),
+      userRepository
+    );
+  
+    try {
+      await otpService.verifyOTP(user.user_id, otp);
+  
+      const resetToken = jwt.sign(
+        { userId: user.user_id, type: 'password-reset' },
+        JWT_SECRET,
+        { expiresIn: '15m' }
+      );
+  
+      res.status(200).json({
+        success: true,
+        data: { resetToken },
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        error: error.message,
+      });
+    }
+  });
+  
+  static resetPassword: ExpressHandler = errorHandler(async (req: Request, res: Response) => {
+    const { resetToken, newPassword, confirmPassword } = req.body;
+  
+    await body('newPassword')
+      .isLength({ min: 8 })
+      .matches(/^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/)
+      .withMessage('Password must contain uppercase, lowercase, number, and special character')
+      .run(req);
+  
+    await body('confirmPassword')
+      .custom((value, { req }) => {
+        if (value !== req.body.newPassword) {
+          throw new Error('Passwords do not match');
+        }
+        return true;
+      })
+      .run(req);
+  
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({
+        success: false,
+        errors: errors.array(),
+      });
+      return; 
+    }
+  
+    try {
+      const decoded = jwt.verify(resetToken, JWT_SECRET) as { userId: number; type: string };
+      if (decoded.type !== 'password-reset') {
+        throw new Error('Invalid reset token');
+      }
+  
+      const user = await userRepository.findOne({ where: { user_id: decoded.userId } });
+  
+      if (!user) {
+        throw new Error('User not found');
+      }
+  
+      const isSameAsOld = await bcrypt.compare(newPassword, user.password);
+      if (isSameAsOld) {
+        throw new Error('New password must be different from the old password');
+      }
+  
+      user.password = await bcrypt.hash(newPassword, 12);
+      user.lastPasswordReset = new Date();
+      await userRepository.save(user);
+  
+      await dbConnection
+        .getRepository(OtpToken)
+        .update({ userId: user.user_id, isUsed: false }, { isUsed: true });
+  
+      res.status(200).json({
+        success: true,
+        message: 'Password reset successful',
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        error: error.message,
+      });
+    }
+  });
+  
 }
 
 export default UserController;

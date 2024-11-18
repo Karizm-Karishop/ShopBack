@@ -4,22 +4,23 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  OneToMany
 } from 'typeorm';
-
+import { OtpToken } from './OtpToken'
 export enum UserRole {
   ARTIST = 'artist',
   CLIENT = 'client',
-  ADMIN = 'admin',
+  ADMIN = 'admin'
 }
-
+import ShopModel from './ShopModel';
 @Entity()
 export default class UserModel {
   @PrimaryGeneratedColumn()
   user_id: number;
-
+  @Column({ type: 'timestamp', nullable: true })
+  otpLockUntil: Date | null;
   @Column()
   name: string;
-
   @Column({ unique: true })
   email: string;
 
@@ -51,7 +52,19 @@ export default class UserModel {
   @UpdateDateColumn()
   updated_at: Date;
 
+  @Column({ nullable: true })
+  lastPasswordReset: Date;
+
+  @Column({ default: 0 })
+  otpAttempts: number;
+  @OneToMany(() => OtpToken, otpToken => otpToken.user)
+  otpTokens: OtpToken[];
+  id: any;
+  
+  @OneToMany(() => ShopModel, (shop) => shop.artist)
+  shops: ShopModel[]; 
+
   constructor(user: Partial<UserModel>) {
-    Object.assign(this, user);
+    Object.assign(this, user)
   }
 }

@@ -8,9 +8,11 @@ import cors from 'cors';
 import roleRoutes from './routes/RoleRoutes';
 import permissionsRoutes from './routes/PermissionRoutes';
 
+import CategoryRoutes from './routes/CategoryRoutes'
+import ShopsRoutes from './routes/ShopRoutes'
+import AlbumRoutes from './routes/AlbumRoutes'
+import TrackRoutes from "./routes/TrackRoutes"
 const app: Application = express();
-
-
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -22,6 +24,11 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/user/', userRoutes);
 app.use('/api/roles/', roleRoutes);
 app.use('/api/permissions/', permissionsRoutes);
+app.use('/api/', CategoryRoutes);
+app.use('/api/', ShopsRoutes);
+app.use('/api/', AlbumRoutes);
+app.use('/api/', TrackRoutes);
+
 app.get('/', (req: Request, res: Response) => {
   res.status(200).json({ message: 'Welcome To The Kari shop Backend Api' });
 });
