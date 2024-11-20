@@ -11,9 +11,13 @@ import CategoryRoutes from './routes/CategoryRoutes'
 import ShopsRoutes from './routes/ShopRoutes'
 import AlbumRoutes from './routes/AlbumRoutes'
 import CartRoutes from './routes/CartRoutes'
-
 import TrackRoutes from "./routes/TrackRoutes"
+import transactionRoutes from './routes/TransactionRoutes';
+import notificationsRoutes from './routes/NotificationRoutes';
+import NotificationController from'./controller/NotificationController';
 const app: Application = express();
+
+NotificationController.initializeEmitter();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -31,7 +35,10 @@ app.use('/api/', AlbumRoutes);
 app.use('/api/', TrackRoutes);
 app.use('/api/', CartRoutes);
 
-
+app.use('/api/roles/', roleRoutes);
+app.use('/api/transactions/', transactionRoutes);
+app.use('/api/notifications/',notificationsRoutes);
+app.use('/api/permissions/', permissionsRoutes);
 app.get('/', (req: Request, res: Response) => {
   res.status(200).json({ message: 'Welcome To The Kari shop Backend Api' });
 });

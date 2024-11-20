@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import fs from 'fs';
 dotenv.config();
 
 type envData = {
@@ -7,6 +8,11 @@ type envData = {
   host?: string;
   port?: string;
   name?: string;
+  ssl?: {
+    require: boolean;
+    rejectUnauthorized: boolean;
+    ca: any;
+  };
 };
 
 const env = process.env.NODE_ENV || 'development';
@@ -17,6 +23,11 @@ const development = {
   host: process.env.DB_HOST_DEV,
   port: process.env.DB_PORT_DEV,
   name: process.env.DB_NAME_DEV,
+  ssl: {
+    require: true,
+    rejectUnauthorized: false,
+    ca: fs.readFileSync('src/config/ca.pem')
+  }
 };
 
 const staging = {
@@ -25,6 +36,11 @@ const staging = {
   host: process.env.DB_HOST,
   port: process.env.DB_PORT,
   name: process.env.DB_NAME_DEV,
+  ssl: {
+    require: true,
+    rejectUnauthorized: false,
+    ca: fs.readFileSync('src/config/ca.pem')
+  }
 };
 
 const production = {
@@ -33,6 +49,11 @@ const production = {
   host: process.env.DB_HOST,
   port: process.env.DB_PORT,
   name: process.env.DB_NAME_DEV,
+  ssl: {
+    require: true,
+    rejectUnauthorized: false,
+    ca: fs.readFileSync('src/config/ca.pem')
+  }
 };
 
 const config: {
