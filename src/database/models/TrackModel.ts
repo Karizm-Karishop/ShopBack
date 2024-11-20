@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import AlbumModel from './AlbumModel';
 
 @Entity('tracks')
@@ -10,7 +10,7 @@ class TrackModel {
   title: string;
 
   @Column({ nullable: true })
-  artist: string;  
+  artist: string;
 
   @Column({ nullable: true })
   genre: string;
@@ -19,15 +19,27 @@ class TrackModel {
   release_date: Date;
 
   @Column({ nullable: true })
-  description: string; 
+  description: string;
 
   @Column({ nullable: true })
-  media_url: string;  
+  media_url: string;
+
+  @Column('jsonb', { nullable: true })
+  metadata: {
+    file: {
+      url: string;
+      originalName: string;
+      mimetype: string;
+      size: number;
+    };
+    artistName: string;
+  };
 
   @ManyToOne(() => AlbumModel, (album) => album.tracks, {
-    onDelete: 'CASCADE'
+    onDelete: 'CASCADE',
   })
-  album: AlbumModel; 
+  @JoinColumn()
+  album: AlbumModel;
 }
 
 export default TrackModel;
