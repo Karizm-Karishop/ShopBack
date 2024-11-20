@@ -15,12 +15,6 @@ class AlbumModel {
   @Column({ nullable: true })
   cover_image: string;
 
-  @Column()
-  media_type: 'audio' | 'video';
-
-  @Column()
-  is_multiple_upload: boolean;
-
   @Column('timestamp', { default: () => 'CURRENT_TIMESTAMP' })
   created_at: Date;
 

@@ -7,10 +7,11 @@ import swaggerSpec from './docs/swaggerconfig';
 import cors from 'cors';
 import roleRoutes from './routes/RoleRoutes';
 import permissionsRoutes from './routes/PermissionRoutes';
-
 import CategoryRoutes from './routes/CategoryRoutes'
 import ShopsRoutes from './routes/ShopRoutes'
 import AlbumRoutes from './routes/AlbumRoutes'
+import CartRoutes from './routes/CartRoutes'
+
 import TrackRoutes from "./routes/TrackRoutes"
 const app: Application = express();
 app.use(cors());
@@ -21,13 +22,15 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use('/api/user/', userRoutes);
+app.use('/api/user/',userRoutes);
 app.use('/api/roles/', roleRoutes);
 app.use('/api/permissions/', permissionsRoutes);
 app.use('/api/', CategoryRoutes);
 app.use('/api/', ShopsRoutes);
 app.use('/api/', AlbumRoutes);
 app.use('/api/', TrackRoutes);
+app.use('/api/', CartRoutes);
+
 
 app.get('/', (req: Request, res: Response) => {
   res.status(200).json({ message: 'Welcome To The Kari shop Backend Api' });

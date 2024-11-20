@@ -332,7 +332,7 @@
 
 /**
  * @swagger
- * /api/user/verify-otp:
+ * /api/verify-otp:
  *   post:
  *     summary: Verify OTP for password reset
  *     tags: [User]
@@ -353,7 +353,6 @@
  *       '400':
  *         description: Invalid OTP or expired OTP
  */
-
 /**
  * @swagger
  * /api/user/reset-password:
@@ -366,14 +365,64 @@
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - email
+ *               - newPassword
+ *               - confirmPassword
+ *               - resetToken
  *             properties:
  *               email:
  *                 type: string
+ *                 description: The user's email address
+ *                 example: example@gmail.com
  *               newPassword:
  *                 type: string
+ *                 description: The new password to be set
+ *                 example: examplePass@123
+ *               confirmPassword:
+ *                 type: string
+ *                 description: Must match the newPassword field
+ *                 example: examplePass@123
+ *               resetToken:
+ *                 type: string
+ *                 description: The token sent for password reset
+ *                 example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsInR5cGUiOiJwYXNzd29yZC1yZXNldCIsImlhdCI6MTczMjA0MjEzMywiZXhwIjoxNzMyMDQzMDMzfQ.kJkyfZynugxnBJfhI3fvCzF5ZkxqlIYD7wdPDwWYHxI
  *     responses:
  *       '200':
  *         description: Password reset successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Password reset successful
  *       '400':
- *         description: Invalid email or password format
+ *         description: Validation errors or invalid reset token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 errors:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       msg:
+ *                         type: string
+ *                         example: Passwords do not match
+ *                       param:
+ *                         type: string
+ *                         example: confirmPassword
+ *                       location:
+ *                         type: string
+ *                         example: body
  */

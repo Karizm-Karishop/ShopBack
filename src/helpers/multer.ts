@@ -5,9 +5,20 @@ import path from "path";
 import fs from "fs";
 import { Request } from "express";
 
-const allowedImageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".tif", ".webp", ".bmp"];
-const allowedAudioExtensions = [".mp3", ".wav", ".flac", ".aac", ".ogg"];
-const allowedVideoExtensions = [".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv"];
+const allowedImageExtensions = [
+  ".jpg", ".jpeg", ".png", ".gif", ".tif", ".webp", ".bmp", 
+  ".svg", ".ico", ".heic", ".tiff"
+];
+
+const allowedAudioExtensions = [
+  ".mp3", ".wav", ".flac", ".aac", ".ogg", 
+  ".wma", ".m4a", ".opus", ".aiff", ".alac"
+];
+
+const allowedVideoExtensions = [
+  ".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv", 
+  ".wmv", ".m4v", ".3gp", ".mpg", ".mpeg"
+];
 
 const ensureDirectoryExists = (dir: string) => {
   if (!fs.existsSync(dir)) {
