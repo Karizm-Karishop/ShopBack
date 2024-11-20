@@ -18,8 +18,10 @@
  *           schema:
  *             type: object
  *             properties:
- *               name:
+ *               firstName:
  *                 type: string
+ *               lastName:
+ *                 type: string  
  *               email:
  *                 type: string
  *               password:
@@ -124,8 +126,10 @@
  *                     properties:
  *                       user_id:
  *                         type: integer
- *                       name:
+ *                       firstName:
  *                         type: string
+ *                       lastName:
+ *                         type: string  
  *                       email:
  *                         type: string
  *                       role:
@@ -158,7 +162,9 @@
  *           schema:
  *             type: object
  *             properties:
- *               name:
+ *               firstName:
+ *                 type: string
+ *               lastName:
  *                 type: string
  *               email:
  *                 type: string
@@ -188,8 +194,10 @@
  *                   properties:
  *                     user_id:
  *                       type: integer
- *                     name:
+ *                     firstName:
  *                       type: string
+ *                     lastName:
+ *                       type:string
  *                     email:
  *                       type: string
  *                     role:
@@ -267,7 +275,9 @@
  *                   properties:
  *                     user_id:
  *                       type: integer
- *                     name:
+ *                     firstName:
+ *                       type: string
+ *                     lastName:
  *                       type: string
  *                     email:
  *                       type: string

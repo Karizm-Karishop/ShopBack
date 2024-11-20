@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import passport from 'passport';
 import UserModel, { UserRole } from '../database/models/UserModel';
 import dbConnection from '../database';
 import { body, validationResult } from 'express-validator';
@@ -11,7 +12,7 @@ const userRepository = dbConnection.getRepository(UserModel);
 import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/jwt.config';
 import { OtpService } from '../services/OtpService';
 import { OtpToken } from '../database/models/OtpToken';
-import { log } from 'console';
+
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -73,7 +74,9 @@ const errorHandler = (fn: ExpressHandler): ExpressHandler => {
 
 class UserController {
   static registerUser: ExpressHandler = errorHandler(async (req: Request, res: Response) => {
-    await body('name').trim().notEmpty().withMessage('Name is required').run(req);
+    await body('firstName').trim().notEmpty().withMessage('First name is required').run(req);
+    await body('lastName').trim().notEmpty().withMessage(' Last name is required').run(req);
+
     await body('email').isEmail().withMessage('Invalid email').run(req);
     await body('password')
       .isLength({ min: 6 })
@@ -92,7 +95,7 @@ class UserController {
       return;
     }
 
-    const { name, email, password, role = UserRole.CLIENT, phone_number, address, gender } = req.body;
+    const { firstName,lastName, email, password, role = UserRole.CLIENT, phone_number, address, gender } = req.body;
     const existingUser = await userRepository.findOne({ where: { email } });
     if (existingUser) {
       res.status(409).json({
@@ -105,7 +108,8 @@ class UserController {
 
     const hashedPassword = await bcrypt.hash(password, 12);
     const user = userRepository.create({
-      name,
+      firstName,
+      lastName,
       email,
       password: hashedPassword,
       role,
@@ -126,7 +130,7 @@ class UserController {
       from: process.env.EMAIL_USER, 
       to: email,                 
       subject: 'Account Registration Confirmation',
-      text: `Hello ${name},\n\nThank you for registering with our service. Your account has been created successfully.\n\nBest regards,\nYour Company Team`
+      text: `Hello ${firstName},\n\nThank you for registering with our service. Your account has been created successfully.\n\nBest regards,\nYour Company Team`
     };
 
     transporter.sendMail(mailOptions, (error, info) => {
@@ -226,7 +230,7 @@ class UserController {
     const skip = (page - 1) * limit;
 
     const [users, total] = await userRepository.findAndCount({
-      select: ['user_id', 'name', 'email', 'role', 'created_at', 'updated_at'],
+      select: ['user_id', 'firstName','lastName', 'email', 'role', 'created_at', 'updated_at'],
       skip,
       take: limit,
       order: { created_at: 'DESC' }
@@ -304,7 +308,8 @@ class UserController {
       }
     }
 
-    user.name = `${firstName || ''} ${lastName || ''}`.trim() || user.name;
+    user.firstName = user.firstName;
+    user.lastName = user.lastName;
     user.email = email || user.email;
     user.updated_at = new Date();
 
@@ -335,7 +340,8 @@ class UserController {
       where: { user_id: userId },
       select: [
         'user_id',
-        'name',
+        'firstName',
+        'lastName',
         'email',
         'phone_number',
         'address',
@@ -516,6 +522,35 @@ class UserController {
       });
     }
   });
+
+  static googleLogin = passport.authenticate('google', { scope: ['profile', 'email'] });
+
+  static googleCallback: ExpressHandler = async (req, res) => {
+    passport.authenticate('google', { session: false }, (err: any, user: { user_id: any; role: any; }, info: any) => {
+      if (err || !user) {
+        return res.status(401).json({
+          success: false,
+          error: 'Authentication failed',
+        });
+      }
+
+      const token = jwt.sign(
+        { userId: user.user_id, role: user.role },
+        JWT_SECRET,
+        { expiresIn: JWT_EXPIRES_IN }
+      );
+
+      res.status(200).json({
+        success: true,
+        message: 'Google login successful',
+        data: {
+          user,
+          token,
+        },
+      });
+    })(req, res);
+  };
+  
   
 }
 
