@@ -9,7 +9,7 @@ export class ReviewController {
         try {
             const { product_id, user_id, rating, comment } = req.body;
             const review = reviewRepo.create(
-                // { product_id, user_id, rating, comment }
+                { product_id, user_id, rating, comment }
             );
             await reviewRepo.save(review);
             return res.status(201).json(review);

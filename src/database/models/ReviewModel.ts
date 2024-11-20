@@ -1,14 +1,14 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne } from "typeorm";
-// import Product from "./ProductModel";
+import {ProductModel as Product} from "./ProductModel";
 import User from "./UserModel";
 
-@Entity('reviews')
+@Entity()
 export default class Review {
     @PrimaryGeneratedColumn()
     review_id: number;
 
-    // @ManyToOne(() => Product, product => product.product_id)
-    // product_id: Product;
+    @ManyToOne(() => Product, product => product.product_id)
+    product_id: Product;
 
     @ManyToOne(() => User, user => user.user_id)
     user_id: User;
