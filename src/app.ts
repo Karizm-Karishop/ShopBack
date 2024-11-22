@@ -11,6 +11,7 @@ import CategoryRoutes from './routes/CategoryRoutes'
 import ShopsRoutes from './routes/ShopRoutes'
 import AlbumRoutes from './routes/AlbumRoutes'
 import CartRoutes from './routes/CartRoutes'
+import session from 'express-session';
 import TrackRoutes from "./routes/TrackRoutes"
 import transactionRoutes from './routes/TransactionRoutes';
 import notificationsRoutes from './routes/NotificationRoutes';
@@ -34,6 +35,7 @@ app.use('/api/', ShopsRoutes);
 app.use('/api/', AlbumRoutes);
 app.use('/api/', TrackRoutes);
 app.use('/api/', CartRoutes);
+
 
 app.use('/api/roles/', roleRoutes);
 app.use('/api/transactions/', transactionRoutes);

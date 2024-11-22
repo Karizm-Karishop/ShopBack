@@ -20,12 +20,14 @@ export default class UserModel {
   @Column({ type: 'timestamp', nullable: true })
   otpLockUntil: Date | null;
   @Column()
-  name: string;
+  firstName: string;
+  @Column()
+  lastName: string;
   @Column({ unique: true })
   email: string;
 
-  @Column()
-  password: string;
+  @Column({ nullable: true })
+  password: string;  
 
   @Column({ nullable: true })
   phone_number: string;
@@ -54,6 +56,21 @@ export default class UserModel {
 
   @Column({ nullable: true })
   lastPasswordReset: Date;
+  
+  @Column({ nullable: true, unique: true })
+  googleId: string;
+
+  @Column({ default: false })
+  isVerified: boolean;
+
+  @Column({ default: 'active' })
+  status: 'active' | 'inactive';
+
+  @Column({ type: 'int', nullable: true })
+  twoFactorCode: number | null;
+
+  @Column({ type: 'boolean', default: false }) 
+  is2FAEnabled: boolean;
 
   @Column({ default: 0 })
   otpAttempts: number;
