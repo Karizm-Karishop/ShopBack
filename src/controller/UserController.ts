@@ -7,6 +7,7 @@ import dbConnection from '../database';
 import { body, validationResult } from 'express-validator';
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer'
+import {ConfirmHtml} from '../templates/ConfirmHtml'
 dotenv.config();
 const userRepository = dbConnection.getRepository(UserModel);
 import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/jwt.config';
@@ -16,10 +17,31 @@ import { OtpToken } from '../database/models/OtpToken';
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: process.env.EMAIL_USER, 
-    pass: process.env.EMAIL_PASS 
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   }
 });
+
+const sendConfirmationEmail = (email: string, firstName: string, userId: number) => {
+  const confirmationLink = `${process.env.APP_URL}/api/user/confirm-email/${userId}`;
+  
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: 'Email Confirmation - Complete Your Registration',
+    html: ConfirmHtml(firstName, confirmationLink), 
+  };
+
+  transporter.sendMail(mailOptions, (error, info) => {
+    if (error) {
+      console.error('Error sending confirmation email:', error);
+      return;
+    }
+    console.log('Confirmation email sent:', info.response);
+  });
+};
+
+
 interface ApiResponse<T> {
   success: boolean;
   data?: T;
@@ -95,13 +117,14 @@ class UserController {
       return;
     }
 
-    const { firstName,lastName, email, password, role = UserRole.CLIENT, phone_number, address, gender } = req.body;
+    const { firstName, lastName, email, password, role = UserRole.CLIENT, phone_number, address, gender } = req.body;
+
     const existingUser = await userRepository.findOne({ where: { email } });
     if (existingUser) {
       res.status(409).json({
         success: false,
         error: 'User already exists',
-        message: 'An account with this email already exists'
+        message: 'An account with this email already exists',
       });
       return;
     }
@@ -115,93 +138,91 @@ class UserController {
       role,
       phone_number,
       address,
-      gender
+      gender,
+      isVerified: false, 
     });
 
     await userRepository.save(user);
 
-    const token = jwt.sign(
-      { userId: user.user_id, role: user.role },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
-    );
+    sendConfirmationEmail(email, firstName, user.user_id);
 
-    const mailOptions = {
-      from: process.env.EMAIL_USER, 
-      to: email,                 
-      subject: 'Account Registration Confirmation',
-      text: `Hello ${firstName},\n\nThank you for registering with our service. Your account has been created successfully.\n\nBest regards,\nYour Company Team`
-    };
-
-    transporter.sendMail(mailOptions, (error, info) => {
-      if (error) {
-        console.error('Error sending confirmation email:', error);
-        return;
-      }
-      console.log('Confirmation email sent:', info.response);
-    });
+    const token = jwt.sign({ userId: user.user_id, role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
     res.status(201).json({
       success: true,
       message: 'User registered successfully. A confirmation email has been sent.',
       data: {
         user: excludePassword(user),
-        token
-      }
+        token,
+      },
     });
   });
-
+// @ts-ignore
   static login: ExpressHandler = errorHandler(async (req: Request, res: Response) => {
     await body('email').isEmail().withMessage('Invalid email').run(req);
     await body('password').notEmpty().withMessage('Password is required').run(req);
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      res.status(400).json({
+      return res.status(400).json({
         success: false,
         error: 'Validation failed',
-        data: errors.array()
+        data: errors.array(),
       });
-      return;
     }
 
     const { email, password } = req.body;
-    console.log("user Info",req)
 
-    const user = await userRepository.findOne({ where: { email } });
-    if (!user) {
-      res.status(401).json({
-        success: false,
-        error: 'Authentication failed',
-        message: 'Invalid email or password'
-      });
-      return;
-    }
-
-    const passwordValid = await bcrypt.compare(password, user.password);
-    if (!passwordValid) {
-      res.status(401).json({
-        success: false,
-        error: 'Authentication failed',
-        message: 'Invalid email or password'
-      });
-      return;
-    }
-
-    const token = jwt.sign(
-      { userId: user.user_id, role: user.role },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
-    );
-
-    res.status(200).json({
-      success: true,
-      message: 'Login successful',
-      data: {
-        user: excludePassword(user),
-        token
+    try {
+      const user = await userRepository.findOne({ where: { email } });
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          error: 'Authentication failed',
+          message: 'Invalid email or password',
+        });
       }
-    });
+
+      if (!user.isVerified) {
+        try {
+          sendConfirmationEmail(email, user.firstName, user.user_id);
+        } catch (emailError) {
+          console.error('Error sending confirmation email:', emailError);
+        }
+        return res.status(400).json({
+          success: false,
+          error: 'Email not verified',
+          message: 'Please verify your email by clicking the link sent to your inbox.',
+        });
+      }
+
+      const passwordValid = await bcrypt.compare(password, user.password);
+      if (!passwordValid) {
+        return res.status(401).json({
+          success: false,
+          error: 'Authentication failed',
+          message: 'Invalid email or password',
+        });
+      }
+
+      const token = jwt.sign({ userId: user.user_id, role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Login successful',
+        data: {
+          user: excludePassword(user), 
+          token,
+        },
+      });
+    } catch (err) {
+      console.error('Unexpected error during login:', err);
+      return res.status(500).json({
+        success: false,
+        error: 'Internal Server Error',
+        message: 'An unexpected error occurred. Please try again later.',
+      });
+    }
   });
 
   static deleteAllUsers: ExpressHandler = errorHandler(async (req: Request, res: Response) => {
@@ -523,15 +544,15 @@ class UserController {
     }
   });
 
-  static googleLogin = passport.authenticate('google', { scope: ['profile', 'email'] });
+  static googleAuth = passport.authenticate('google', {
+    scope: ['profile', 'email'],
+  });
 
-  static googleCallback: ExpressHandler = async (req, res) => {
-    passport.authenticate('google', { session: false }, (err: any, user: { user_id: any; role: any; }, info: any) => {
-      if (err || !user) {
-        return res.status(401).json({
-          success: false,
-          error: 'Authentication failed',
-        });
+  static googleAuthCallback = (req: Request, res: Response, next: NextFunction) => {
+    passport.authenticate('google', (err: any, user: { user_id: any; role: any; }, info: any) => {
+      if (err) return next(err);
+      if (!user) {
+        return res.status(401).json({ success: false, message: 'Authentication failed' });
       }
 
       const token = jwt.sign(
@@ -542,17 +563,157 @@ class UserController {
 
       res.status(200).json({
         success: true,
-        message: 'Google login successful',
+        message: 'Login successful',
         data: {
           user,
           token,
         },
       });
-    })(req, res);
+    })(req, res, next);
   };
+
+
+// @ts-ignore
+  static deactivateAccount: ExpressHandler = errorHandler(async (req: Request, res: Response) => {
+    const { userId } = req.body;
+
+    const user = await userRepository.findOne({ where: { user_id: userId } });
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    user.status = 'inactive';
+    await userRepository.save(user);
+
+    res.status(200).json({ success: true, message: 'User account deactivated' });
+  });
+// @ts-ignore
+  static activateAccount: ExpressHandler = errorHandler(async (req: Request, res: Response) => {
+    const { userId } = req.body;
+
+    const user = await userRepository.findOne({ where: { user_id: userId } });
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    user.status = 'active';
+    await userRepository.save(user);
+
+    res.status(200).json({ success: true, message: 'User account activated' });
+  });
+
+
+  static confirmEmail: ExpressHandler = errorHandler(async (req: Request, res: Response) => {
+    const { userId } = req.params;
+
+    const user = await userRepository.findOne({ where: { user_id: Number(userId) } });
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        error: 'User not found',
+        message: 'No user found with the provided ID',
+      });
+      return;
+    }
+
+    user.isVerified = true;
+    await userRepository.save(user);
+
+    res.status(200).json({
+      success: true,
+      message: 'Email verified successfully',
+    });
+  });
+
+  static enable2FA: ExpressHandler = errorHandler(async (req: Request, res: Response) => {
+    const { userId } = req.params;
+    const user = await userRepository.findOne({ where: { user_id: Number(userId) } });
+    if (!user || user.role !== UserRole.ARTIST) {
+      res.status(400).json({
+        success: false,
+        error: '2FA not enabled',
+        message: 'Only artists can enable 2FA.',
+      });
+      return;
+    }
+
+    const twoFactorCode = Math.floor(100000 + Math.random() * 900000);
+    user.twoFactorCode = twoFactorCode;
+    await userRepository.save(user);
+
+    res.status(200).json({
+      success: true,
+      message: '2FA enabled successfully',
+      data: { twoFactorCode },
+    });
+  });
+
+  static disable2FA: ExpressHandler = errorHandler(async (req: Request, res: Response) => {
+    const { userId } = req.params;
+    const user = await userRepository.findOne({ where: { user_id: Number(userId) } });
+    if (!user || user.role !== UserRole.ARTIST) {
+      res.status(400).json({
+        success: false,
+        error: '2FA not disabled',
+        message: 'Only artists can disable 2FA.',
+      });
+      return;
+    }
+  
+    user.twoFactorCode = null; 
+    user.is2FAEnabled = false; 
+    await userRepository.save(user);
+  
+    res.status(200).json({
+      success: true,
+      message: '2FA disabled successfully',
+    });
+  });
+
+
+  static resendConfirmationEmail: ExpressHandler = errorHandler(async (req: Request, res: Response) => {
+    const { email } = req.body;
+  
+    await body('email').isEmail().withMessage('Invalid email').run(req);
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({
+        success: false,
+        errors: errors.array(),
+      });
+      return;
+    }
+  
+    const user = await userRepository.findOne({ where: { email } });
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        error: 'User not found',
+        message: 'No user found with this email address',
+      });
+      return;
+    }
+  
+    if (user.isVerified) {
+      res.status(400).json({
+        success: false,
+        error: 'Email already verified',
+        message: 'Your email is already verified.',
+      });
+      return;
+    }
+  
+    sendConfirmationEmail(email, user.firstName, user.user_id);
+  
+    res.status(200).json({
+      success: true,
+      message: 'Confirmation email has been resent.',
+    });
+  });
   
   
-}
+  }
+  
 
 export default UserController;
 
