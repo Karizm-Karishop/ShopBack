@@ -436,3 +436,252 @@
  *                         type: string
  *                         example: body
  */
+
+/**
+ * @swagger
+ * tags:
+ *   name: User
+ *   description: User management and authentication
+ */
+
+/**
+ * @swagger
+ * /api/user/resend-confirmation:
+ *   post:
+ *     summary: Resend email confirmation
+ *     tags: [User]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: user@example.com
+ *     responses:
+ *       200:
+ *         description: Confirmation email resent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Confirmation email sent
+ *       400:
+ *         description: Bad request or validation error
+ *       404:
+ *         description: User not found
+ */
+
+/**
+ * @swagger
+ * /api/user/enable-2fa/{userId}:
+ *   post:
+ *     summary: Enable two-factor authentication for a user
+ *     tags: [User]
+ *     parameters:
+ *       - name: userId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *     responses:
+ *       200:
+ *         description: 2FA enabled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Two-factor authentication enabled
+ *       404:
+ *         description: User not found
+ */
+
+/**
+ * @swagger
+ * /api/user/disable-2fa/{userId}:
+ *   post:
+ *     summary: Disable two-factor authentication for a user
+ *     tags: [User]
+ *     parameters:
+ *       - name: userId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *     responses:
+ *       200:
+ *         description: 2FA disabled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Two-factor authentication disabled
+ *       404:
+ *         description: User not found
+ */
+
+/**
+ * @swagger
+ * /api/user/auth/google:
+ *   get:
+ *     summary: Initiate Google OAuth authentication
+ *     tags: [User]
+ *     responses:
+ *       302:
+ *         description: Redirects to Google OAuth consent screen
+ */
+
+/**
+ * @swagger
+ * /api/user/auth/google/callback:
+ *   get:
+ *     summary: Handle Google OAuth callback
+ *     tags: [User]
+ *     responses:
+ *       200:
+ *         description: Authentication successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Login successful
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                       description: Authenticated user details
+ *                     token:
+ *                       type: string
+ *                       description: JWT token
+ *       401:
+ *         description: Authentication failed
+ */
+
+/**
+ * @swagger
+ * /api/user/activate:
+ *   post:
+ *     summary: Activate a user account
+ *     tags:
+ *       - User Management
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               userId:
+ *                 type: integer
+ *                 description: The ID of the user to activate
+ *                 example: 123
+ *     responses:
+ *       200:
+ *         description: User account activated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: User account activated
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: User not found
+ *       500:
+ *         description: Internal server error
+ */
+
+/**
+ * @swagger
+ * /api/user/deactivate:
+ *   post:
+ *     summary: Deactivate a user account
+ *     tags:
+ *       - User Management
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               userId:
+ *                 type: integer
+ *                 description: The ID of the user to deactivate
+ *                 example: 123
+ *     responses:
+ *       200:
+ *         description: User account deactivated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: User account deactivated
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: User not found
+ *       500:
+ *         description: Internal server error
+ */
+

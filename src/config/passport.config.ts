@@ -1,7 +1,10 @@
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import dotenv from 'dotenv';
 import UserModel from '../database/models/UserModel';
 import dbConnection from '../database';
+
+dotenv.config();
 
 const userRepository = dbConnection.getRepository(UserModel);
 
@@ -10,26 +13,30 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      callbackURL: "http://localhost:3000/api/user/auth/google/callback",
+      callbackURL: process.env.callbackURL,
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        let user = await userRepository.findOne({ where: { googleId: profile.id } });
-        
+        const email = profile.emails?.[0]?.value;
+        if (!email) {
+          return done(new Error('Email not provided by Google'));
+        }
+
+        let user = await userRepository.findOne({ where: { email } });
+
         if (!user) {
           user = userRepository.create({
             googleId: profile.id,
-            firstName: profile.name?.givenName,
-            lastName: profile.name?.familyName,
-            email: profile.emails?.[0].value,
-            profile_picture: profile.photos?.[0].value,
+            email,
+            firstName: profile.name?.givenName || '',
+            lastName: profile.name?.familyName || '',
           });
           await userRepository.save(user);
         }
 
-        done(null, user);
+        return done(null, user);
       } catch (error) {
-        done(error);
+        return done(error);
       }
     }
   )
@@ -47,5 +54,3 @@ passport.deserializeUser(async (id: number, done) => {
     done(error, null);
   }
 });
-
-export default passport;

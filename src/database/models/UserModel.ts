@@ -57,8 +57,20 @@ export default class UserModel {
   @Column({ nullable: true })
   lastPasswordReset: Date;
   
-  @Column({ nullable: true })
+  @Column({ nullable: true, unique: true })
   googleId: string;
+
+  @Column({ default: false })
+  isVerified: boolean;
+
+  @Column({ default: 'active' })
+  status: 'active' | 'inactive';
+
+  @Column({ type: 'int', nullable: true })
+  twoFactorCode: number | null;
+
+  @Column({ type: 'boolean', default: false }) 
+  is2FAEnabled: boolean;
 
   @Column({ default: 0 })
   otpAttempts: number;

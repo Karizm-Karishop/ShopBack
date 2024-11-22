@@ -1,6 +1,7 @@
 import { DataSource } from 'typeorm';
 import config from '../config/db';
-
+import dotenv from 'dotenv'
+dotenv.config();
 export class DbConnection {
   private static _instance: DbConnection;
   private static dbConnection = new DataSource({
@@ -8,11 +9,12 @@ export class DbConnection {
     logging: false,
     ssl: config.ssl,
     synchronize: true,
-    host: config.host,
-    port: Number(config.port as string),
-    username: config.username,
-    password: config.password,
-    database: config.name,
+    // host: config.host,
+    // port: Number(config.port as string),
+    // username: config.username,
+    // password: config.password,
+    // database: config.name,
+    url:process.env.DATABASE_URL,
     migrations: [__dirname + '/migrations/'],
     entities: [__dirname + '/models/*{.js,.ts}'],
   });
