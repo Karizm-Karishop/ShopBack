@@ -158,72 +158,91 @@ class UserController {
     });
   });
 // @ts-ignore
-  static login: ExpressHandler = errorHandler(async (req: Request, res: Response) => {
-    await body('email').isEmail().withMessage('Invalid email').run(req);
-    await body('password').notEmpty().withMessage('Password is required').run(req);
+static login: ExpressHandler = errorHandler(async (req: Request, res: Response) => {
+  await body('email').isEmail().withMessage('Invalid email').run(req);
+  await body('password').notEmpty().withMessage('Password is required').run(req);
 
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      error: 'Validation failed',
+      data: errors.array(),
+    });
+  }
+
+  const { email, password } = req.body;
+
+  try {
+    const user = await userRepository.findOne({ where: { email } });
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication failed',
+        message: 'Invalid email or password',
+      });
+    }
+
+    if (!user.isVerified) {
+      try {
+        sendConfirmationEmail(email, user.firstName, user.user_id);
+      } catch (emailError) {
+        console.error('Error sending confirmation email:', emailError);
+      }
       return res.status(400).json({
         success: false,
-        error: 'Validation failed',
-        data: errors.array(),
+        error: 'Email not verified',
+        message: 'Please verify your email by clicking the link sent to your inbox.',
       });
     }
 
-    const { email, password } = req.body;
-
-    try {
-      const user = await userRepository.findOne({ where: { email } });
-      if (!user) {
-        return res.status(401).json({
-          success: false,
-          error: 'Authentication failed',
-          message: 'Invalid email or password',
-        });
-      }
-
-      if (!user.isVerified) {
-        try {
-          sendConfirmationEmail(email, user.firstName, user.user_id);
-        } catch (emailError) {
-          console.error('Error sending confirmation email:', emailError);
-        }
-        return res.status(400).json({
-          success: false,
-          error: 'Email not verified',
-          message: 'Please verify your email by clicking the link sent to your inbox.',
-        });
-      }
-
-      const passwordValid = await bcrypt.compare(password, user.password);
-      if (!passwordValid) {
-        return res.status(401).json({
-          success: false,
-          error: 'Authentication failed',
-          message: 'Invalid email or password',
-        });
-      }
-
-      const token = jwt.sign({ userId: user.user_id, role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-
-      return res.status(200).json({
-        success: true,
-        message: 'Login successful',
-        data: {
-          user: excludePassword(user), 
-          token,
-        },
-      });
-    } catch (err) {
-      console.error('Unexpected error during login:', err);
-      return res.status(500).json({
+    const isPasswordMatch = await bcrypt.compare(password, user.password);
+    if (!isPasswordMatch) {
+      return res.status(401).json({
         success: false,
-        error: 'Internal Server Error',
-        message: 'An unexpected error occurred. Please try again later.',
+        error: 'Authentication failed',
+        message: 'Invalid email or password',
       });
     }
-  });
+
+    const token = jwt.sign(
+      { userId: user.user_id, role: user.role },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    let loginMessage = `${user.role} login successfully`;
+    switch (user.role) {
+      case UserRole.CLIENT:
+        loginMessage = 'Client login successfully';
+        break;
+      case UserRole.ADMIN:
+        loginMessage = 'Admin login successfully';
+        break;
+      case UserRole.ARTIST:
+        loginMessage = 'Artist login successfully';
+        break;
+      default:
+        loginMessage = 'Login successfully';
+    }
+
+    res.status(200).json({
+      success: true,
+      message: loginMessage,
+      data: {
+        user: excludePassword(user),
+        token,
+      },
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+});
+
 
   static deleteAllUsers: ExpressHandler = errorHandler(async (req: Request, res: Response) => {
     if ((req as any).user?.role !== UserRole.ADMIN) {

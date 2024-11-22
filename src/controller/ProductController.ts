@@ -3,8 +3,9 @@ import { ProductModel } from "../database/models/ProductModel";
 import CategoryModel from "../database/models/CategoryModel";
 import ShopModel from "../database/models/ShopModel";
 import { body, validationResult } from "express-validator";
-import dbConnection from "../database"; 
+import dbConnection from "../database";
 import errorHandler from "../middlewares/errorHandler";
+import { UploadToCloud } from "../helpers/cloud";
 type ExpressHandler = (
   req: Request,
   res: Response,
@@ -12,6 +13,7 @@ type ExpressHandler = (
 ) => Promise<void>;
 class ProductController {
   static createProduct: ExpressHandler = errorHandler(
+    // @ts-ignore
     async (req: Request, res: Response) => {
       await body("name")
         .trim()
@@ -47,17 +49,16 @@ class ProductController {
         .isArray()
         .withMessage("Tags must be an array")
         .run(req);
-
+  
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        res.status(400).json({
+        return res.status(400).json({
           success: false,
           error: "Validation failed",
           data: errors.array(),
         });
-        return;
       }
-
+  
       const {
         name,
         description,
@@ -68,33 +69,50 @@ class ProductController {
         shop_id,
         tags,
       } = req.body;
-
+  
       const productRepository = dbConnection.getRepository(ProductModel);
       const categoryRepository = dbConnection.getRepository(CategoryModel);
       const shopRepository = dbConnection.getRepository(ShopModel);
-
       const category = await categoryRepository.findOne({
         where: { category_id },
       });
+
       if (!category) {
-        res.status(404).json({
+        return res.status(404).json({
           success: false,
           error: "Not found",
           message: "Category not found",
         });
-        return;
       }
-
+  
       const shop = await shopRepository.findOne({ where: { shop_id } });
       if (!shop) {
-        res.status(404).json({
+        return res.status(404).json({
           success: false,
           error: "Not found",
           message: "Shop not found",
         });
-        return;
       }
-
+  
+      let product_image: string | null = null;
+      let gallery: string[] = [];
+  
+      if (req.files) {
+        const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+  
+        if (files.product_image) {
+          const uploadResponse = await UploadToCloud(files.product_image[0], res);
+          product_image = uploadResponse.secure_url;
+        }
+  
+        if (files.gallery) {
+          const galleryUploads = await Promise.all(
+            files.gallery.map((file) => UploadToCloud(file, res))
+          );
+          gallery = galleryUploads.map((upload) => upload.secure_url);
+        }
+      }
+  
       const product = productRepository.create({
         name,
         description,
@@ -104,11 +122,12 @@ class ProductController {
         category,
         shop,
         tags,
+        product_image,  
+        gallery,      
       });
-
+  
       await productRepository.save(product);
-
-      res.status(201).json({
+        return res.status(201).json({
         success: true,
         message: "Product created successfully",
         data: product,
@@ -123,17 +142,17 @@ class ProductController {
         res.status(400).json({ errors: errors.array() });
         return;
       }
-
+  
       const productRepository = dbConnection.getRepository(ProductModel);
       const product = await productRepository.findOne({
         where: { product_id: parseInt(req.params.id) },
       });
-
+  
       if (!product) {
         res.status(404).json({ message: "Product not found" });
         return;
       }
-
+  
       if (req.body.category_id) {
         const categoryRepository = dbConnection.getRepository(CategoryModel);
         const category = await categoryRepository.findOne({
@@ -145,7 +164,7 @@ class ProductController {
         }
         product.category = category;
       }
-
+  
       if (req.body.shop_id) {
         const shopRepository = dbConnection.getRepository(ShopModel);
         const shop = await shopRepository.findOne({
@@ -157,16 +176,39 @@ class ProductController {
         }
         product.shop = shop;
       }
-
+  
+      let product_image: string | null = product.product_image;
+      let gallery: string[] = product.gallery;
+  
+      if (req.files) {
+        const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+  
+        if (files.product_image) {
+          const uploadResponse = await UploadToCloud(files.product_image[0], res);
+          product_image = uploadResponse.secure_url;
+        }
+  
+        if (files.gallery) {
+          const galleryUploads = await Promise.all(
+            files.gallery.map((file) => UploadToCloud(file, res))
+          );
+          gallery = galleryUploads.map((upload) => upload.secure_url);
+        }
+      }
+  
       Object.assign(product, req.body);
+      product.product_image = product_image;
+      product.gallery = gallery;
+  
       await productRepository.save(product);
-
+  
       res.status(200).json({
         message: "Product updated successfully",
         data: product,
       });
     }
   );
+  
 
   static getAllProducts: ExpressHandler = errorHandler(
     async (req: Request, res: Response) => {

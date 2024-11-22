@@ -1,10 +1,22 @@
 import express, { Router } from "express";
 import  ProductController  from "../controller/ProductController";
-
+import upload from '../helpers/multer';  
 const router: Router = express.Router();
-router.post("/products", ProductController.createProduct);
+router.post(
+    "/products",
+    upload.fields([
+      { name: "product_image", maxCount: 1 },
+      { name: "gallery", maxCount: 10 },
+    ]),
+    ProductController.createProduct
+  );
 
-router.put("/products/:id", ProductController.updateProduct);
+router.put("/products/:id",
+    upload.fields([
+        { name: "product_image", maxCount: 1 },
+        { name: "gallery", maxCount: 10 },
+      ]),
+    ProductController.updateProduct);
 
 router.get("/products", ProductController.getAllProducts);
 
