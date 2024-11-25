@@ -6,8 +6,6 @@ import {
     UpdateDateColumn,
     ManyToOne,
     OneToMany,
-    ManyToMany,
-    JoinTable
   } from 'typeorm';
   import CategoryModel  from './CategoryModel';
   import ShopModel  from './ShopModel';
@@ -26,9 +24,9 @@ import {
     @Column('text')
     description: string;
   
-    @Column()
-    productImage: string;
-  
+    @Column('text', { nullable: true })
+    product_image: string | null;
+    
     @Column('simple-array')
     gallery: string[];
   

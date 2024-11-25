@@ -1,4 +1,5 @@
-//@ts-nocheck
+
+// @ts-nocheck
 import { Order } from "../database/models/Order";
 import { Request, Response, NextFunction } from "express";
 import { body, param, validationResult } from "express-validator";
@@ -6,6 +7,7 @@ import dbConnection from "../database";
 import { CartItem } from "../database/models/CartItem";
 import { OrderItem } from "../database/models/OrderItem";
 import UserModel from "../database/models/UserModel";
+import Stripe from "stripe";
 type ExpressHandler = (
     req: Request,
     res: Response,
@@ -13,11 +15,11 @@ type ExpressHandler = (
   ) => Promise<void>;
   import errorHandler from "../middlewares/errorHandler";
 import { DeepPartial } from "typeorm";
-  interface AuthenticatedRequest extends Request {
-    user: {
-      id: number;
-    };
-  }
+
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+    apiVersion: '2023-10-16'
+  });
+
 class OrderController {
   static createOrder: ExpressHandler = errorHandler(
     async (req: Request, res: Response) => {
@@ -96,6 +98,159 @@ class OrderController {
         message: "Order created successfully",
         data: { order, items: orderItems }
       });
+    }
+  );
+
+  
+
+  static confirmCheckout = errorHandler(
+    async (req: Request, res: Response) => {
+      const { sessionId } = req.body;
+      const orderRepository = dbConnection.getRepository(Order);
+
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+      if (session.payment_status === 'paid') {
+        const order = await orderRepository.findOne({
+          where: { stripe_checkout_session_id: sessionId }
+        });
+
+        if (order) {
+          order.status = 'processing';
+          order.payment_status = 'paid';
+          await orderRepository.save(order);
+
+          return res.status(200).json({
+            message: 'Checkout successful',
+            orderId: order.id
+          });
+        }
+      }
+
+      res.status(400).json({ message: 'Checkout failed' });
+    }
+  );
+
+  static createCheckout: ExpressHandler = errorHandler(
+    async (req: Request, res: Response) => {
+      await body("shipping_address")
+        .notEmpty()
+        .withMessage("Shipping address is required")
+        .run(req);
+
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const user_id = req.user.id;
+      const { shipping_address } = req.body;
+
+      const cartItemRepository = dbConnection.getRepository(CartItem);
+      const orderRepository = dbConnection.getRepository(Order);
+
+      const cartItems = await cartItemRepository.find({
+        where: { user: { id: user_id } },
+        relations: ["product"],
+      });
+
+      if (cartItems.length === 0) {
+        return res.status(400).json({ message: "Cart is empty" });
+      }
+
+      const total_amount = cartItems.reduce(
+        (sum, item) => sum + item.product.sales_price * item.quantity,
+        0
+      );
+
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        line_items: cartItems.map((item) => ({
+          price_data: {
+            currency: "usd",
+            product_data: { name: item.product.name },
+            unit_amount: Math.round(item.product.sales_price * 100),
+          },
+          quantity: item.quantity,
+        })),
+        mode: "payment",
+        success_url: `${process.env.APP_URL}/checkout/success`,
+        cancel_url: `${process.env.APP_URL}/checkout/cancel`,
+        metadata: { user_id: user_id.toString() },
+      });
+
+      const order = orderRepository.create({
+        user: { id: user_id },
+        total_amount,
+        shipping_address,
+        status: "pending",
+        stripe_checkout_session_id: session.id,
+      });
+
+      await orderRepository.save(order);
+      await cartItemRepository.delete({ user: { id: user_id } });
+
+      res.status(201).json({
+        message: "Checkout initiated",
+        checkoutUrl: session.url,
+        orderId: order.id,
+      });
+    }
+  );
+
+
+  static confirmOrder: ExpressHandler = errorHandler(
+    async (req: Request, res: Response) => {
+      const { sessionId } = req.body;
+      const orderRepository = dbConnection.getRepository(Order);
+
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+      if (session.payment_status === "paid") {
+        const order = await orderRepository.findOne({
+          where: { stripe_checkout_session_id: sessionId },
+        });
+
+        if (order) {
+          order.status = "processing";
+          order.payment_status = "paid";
+          await orderRepository.save(order);
+
+          return res.status(200).json({
+            message: "Order completed successfully",
+            order,
+          });
+        }
+      }
+
+      res.status(400).json({ message: "Payment confirmation failed" });
+    }
+  );
+
+  /**
+   * Cancel an order by updating Stripe and database
+   */
+  static cancelOrder: ExpressHandler = errorHandler(
+    async (req: Request, res: Response) => {
+      const { orderId } = req.params;
+      const orderRepository = dbConnection.getRepository(Order);
+
+      const order = await orderRepository.findOne({
+        where: { id: orderId, status: "pending" },
+      });
+
+      if (!order) {
+        return res.status(404).json({ message: "Order not found or already processed" });
+      }
+
+      if (order.stripe_checkout_session_id) {
+        await stripe.checkout.sessions.expire(order.stripe_checkout_session_id);
+      }
+
+      order.status = "cancelled";
+      await orderRepository.save(order);
+
+      res.status(200).json({ message: "Order cancelled successfully", order });
     }
   );
 
