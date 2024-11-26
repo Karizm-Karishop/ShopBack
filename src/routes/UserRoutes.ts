@@ -27,7 +27,6 @@ router.get('/auth/google',
       scope: ['profile', 'email']
     })
   );
-  
   router.get('/auth/google/callback',
     passport.authenticate('google', { session: false }),
     async (req, res) => {
@@ -46,7 +45,6 @@ router.get('/auth/google',
           process.env.JWT_SECRET as string,
           { expiresIn: '1h' }
         );
-
         res.redirect(`${process.env.FRONTEND_URL}/login?token=${token}`);
       } catch (error) {
         console.error('Auth callback error:', error);

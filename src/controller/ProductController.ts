@@ -102,14 +102,14 @@ class ProductController {
   
         if (files.product_image) {
           const uploadResponse = await UploadToCloud(files.product_image[0], res);
-          product_image = uploadResponse.secure_url;
+          product_image = (uploadResponse as any).secure_url;
         }
   
         if (files.gallery) {
           const galleryUploads = await Promise.all(
             files.gallery.map((file) => UploadToCloud(file, res))
           );
-          gallery = galleryUploads.map((upload) => upload.secure_url);
+          gallery = galleryUploads.map((upload) => (upload as any).secure_url);
         }
       }
   
@@ -185,14 +185,14 @@ class ProductController {
   
         if (files.product_image) {
           const uploadResponse = await UploadToCloud(files.product_image[0], res);
-          product_image = uploadResponse.secure_url;
+          product_image = (uploadResponse as any).secure_url;
         }
   
         if (files.gallery) {
           const galleryUploads = await Promise.all(
             files.gallery.map((file) => UploadToCloud(file, res))
           );
-          gallery = galleryUploads.map((upload) => upload.secure_url);
+          gallery = galleryUploads.map((upload) => (upload as any).secure_url);
         }
       }
   

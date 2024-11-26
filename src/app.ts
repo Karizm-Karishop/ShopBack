@@ -15,6 +15,7 @@ import TrackRoutes from "./routes/TrackRoutes"
 import transactionRoutes from './routes/TransactionRoutes';
 import notificationsRoutes from './routes/NotificationRoutes';
 import NotificationController from'./controller/NotificationController';
+import ProductRoutes from './routes/ProductRoutes'
 const app: Application = express();
 
 NotificationController.initializeEmitter();
@@ -34,8 +35,7 @@ app.use('/api/', ShopsRoutes);
 app.use('/api/', AlbumRoutes);
 app.use('/api/', TrackRoutes);
 app.use('/api/', CartRoutes);
-
-
+app.use('/api/', ProductRoutes);
 app.use('/api/roles/', roleRoutes);
 app.use('/api/transactions/', transactionRoutes);
 app.use('/api/notifications/',notificationsRoutes);
