@@ -91,57 +91,57 @@ class ShopController {
   };
 
   static updateShop: ExpressHandler = errorHandler(
-    async (req: Request, res: Response):Promise<any> => {
-    // Validate specific fields in the request body
-    await Promise.all([
-      body("shop_name").optional().trim().notEmpty().run(req),
-      body("description").optional().trim().run(req),
-      body("category_id").optional().isInt().run(req),
-    ]);
+    async (req: Request, res: Response): Promise<any> => {
+      // Validate specific fields in the request body
+      await Promise.all([
+        body("shop_name").optional().trim().notEmpty().run(req),
+        body("description").optional().trim().run(req),
+        body("category_id").optional().isInt().run(req),
+      ]);
 
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        error: "Validation failed",
-        data: errors.array(),
-      });
-    }
-
-    const shop_id = Number(req.params.id);
-    const { category_id } = req.body;
-    const { icon, banner } = req.files as any;
-    const shop = await shopRepository.findOne({ where: { shop_id }, relations: ["category"] });
-    if (!shop) {
-      return res.status(404).json({ success: false, error: "Shop not found" });
-    }
-
-    Object.assign(shop, req.body);
-
-    if (category_id) {
-      const category = await categoryRepository.findOne({ where: { category_id } });
-      if (!category) {
-        return res.status(404).json({ success: false, error: "Category not found" });
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          error: "Validation failed",
+          data: errors.array(),
+        });
       }
-      shop.category = category;
-    }
-    if (icon) {
-      const uploadedIcon = await UploadToCloud(icon[0], res);
-      shop.icon = (uploadedIcon as any).secure_url;
-    }
-    if (banner) {
-      const uploadedBanner = await UploadToCloud(banner[0], res) as any;
-      shop.banner = uploadedBanner?.secure_url;
-    }
 
-    await shopRepository.save(shop);
+      const shop_id = Number(req.params.id);
+      const { category_id } = req.body;
+      const { icon, banner } = req.files as any;
+      const shop = await shopRepository.findOne({ where: { shop_id }, relations: ["category"] });
+      if (!shop) {
+        return res.status(404).json({ success: false, error: "Shop not found" });
+      }
 
-    res.status(200).json({
-      success: true,
-      message: "Shop updated successfully",
-      data: shop,
+      Object.assign(shop, req.body);
+
+      if (category_id) {
+        const category = await categoryRepository.findOne({ where: { category_id } });
+        if (!category) {
+          return res.status(404).json({ success: false, error: "Category not found" });
+        }
+        shop.category = category;
+      }
+      if (icon) {
+        const uploadedIcon = await UploadToCloud(icon[0], res);
+        shop.icon = (uploadedIcon as any).secure_url;
+      }
+      if (banner) {
+        const uploadedBanner = await UploadToCloud(banner[0], res) as any;
+        shop.banner = uploadedBanner?.secure_url;
+      }
+
+      await shopRepository.save(shop);
+
+      res.status(200).json({
+        success: true,
+        message: "Shop updated successfully",
+        data: shop,
+      });
     });
-  });
 
 
   static getAllShops: ExpressHandler = errorHandler(
@@ -195,10 +195,14 @@ class ShopController {
         })
       }
       else {
-        res.status(200).json({
-          success: true,
-          message: "Shop deleted successfully",
-        })
+        const deleteResult = await shopRepository.delete({ shop_id: shopId });
+        if (deleteResult) {
+          res.status(200).json({
+            success: true,
+            message: "Shop deleted successfully",
+          })
+        }
+
       }
     });
 
