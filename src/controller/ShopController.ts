@@ -89,7 +89,6 @@ class ShopController {
       data: shop,
     });
   };
-
   static updateShop: ExpressHandler = errorHandler(
     async (req: Request, res: Response): Promise<any> => {
       // Validate specific fields in the request body

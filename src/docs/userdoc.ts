@@ -218,9 +218,9 @@
 
 /**
  * @swagger
- * /api/user/delete-all-users:
+ * /api/user/all-users:
  *   delete:
- *     summary: Delete all users (Admin only)
+ *     summary: Delete all users
  *     tags: [User]
  *     responses:
  *       '200':

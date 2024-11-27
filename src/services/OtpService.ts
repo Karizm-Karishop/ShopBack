@@ -1,6 +1,7 @@
 import { generateOTP, sendEmail } from '../utilis/helper';
 import { OtpToken } from '../database/models/OtpToken';
 import { MoreThan, Repository } from 'typeorm';
+import {TwoFactorAuthHtml} from '../templates/TwoFactorAuthHtml'
 import bcrypt from 'bcryptjs';
 
 import UserModel from '../database/models/UserModel';
@@ -34,8 +35,9 @@ export class OtpService {
 
     await sendEmail({
       to: user.email,
-      subject: 'Password Reset OTP',
-      text: `Your OTP for password reset is: ${otp}. This code will expire in 10 minutes.`
+      subject: 'Your Two-Factor Authentication Code',
+      html: TwoFactorAuthHtml(user.firstName, otp),
+      text: ''
     });
 
     return otp;
