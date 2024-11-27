@@ -12,7 +12,7 @@ router.post('/login', UserController.login);
 router.put('/profile/:id', UserController.updateProfile);      
 router.get('/profile/:id', UserController.getProfileById);     
 router.get('/confirm-email/:userId', UserController.confirmEmail); 
-router.post('/resend-confirmation', UserController.resendConfirmationEmail); 
+router.post('/resend-confirmation', UserController.resendConfirmationEmail);
 router.post('/enable-2fa/:userId', UserController.enable2FA);  
 router.post('/disable-2fa/:userId', UserController.disable2FA); 
 router.post('/forgot-password', UserController.requestPasswordReset); 
