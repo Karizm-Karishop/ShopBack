@@ -101,7 +101,7 @@ class ShopController {
         return;
       }
 
-      const { shop_id } = req.params;
+      const shop_id = req.params.id;
       const { shop_name, description, category_id } = req.body;
       const icon = req.file; 
 
