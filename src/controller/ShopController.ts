@@ -4,7 +4,7 @@ import CategoryModel from "../database/models/CategoryModel";
 import dbConnection from "../database";
 import { body, validationResult } from "express-validator";
 import errorHandler from "../middlewares/errorHandler";
-import { UploadToCloud } from "../helpers/cloud";  
+import { UploadToCloud } from "../helpers/cloud";
 import UserModel from "../database/models/UserModel";
 
 const shopRepository = dbConnection.getRepository(ShopModel);
@@ -21,7 +21,7 @@ class ShopController {
     await body("description").optional().trim().run(req);
     await body("category_id").isInt().run(req);
     await body("artist_id").isInt().run(req);
-  
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({
@@ -31,10 +31,9 @@ class ShopController {
       });
       return;
     }
-  
+
     const { shop_name, description, category_id, artist_id } = req.body;
-    const icon = req.file;
-  
+    const { icon, banner } = req.files as any;
     const category = await categoryRepository.findOne({
       where: { category_id },
     });
@@ -45,7 +44,7 @@ class ShopController {
       });
       return;
     }
-  
+
     const artist = await dbConnection.getRepository(UserModel).findOne({
       where: { user_id: artist_id },
     });
@@ -56,100 +55,95 @@ class ShopController {
       });
       return;
     }
-  
+
     const { password, ...artistWithoutPassword } = artist;
-  
+
     let iconUrl = "";
+    let bannerUrl = "";
     if (icon) {
-      const uploadedIcon = await UploadToCloud(icon, res);
+      const uploadedIcon = await UploadToCloud(icon[0], res);
       iconUrl = (uploadedIcon as any).secure_url;
+      console.log(iconUrl);
     }
-  
+    if (banner) {
+      const uploadedBanner = await UploadToCloud(banner[0], res) as any;
+      bannerUrl = uploadedBanner?.secure_url;
+      console.log(bannerUrl);
+    }
+
     const shop = shopRepository.create({
+      ...req.body,
       shop_name,
+      banner: bannerUrl,
       icon: iconUrl,
       description,
       category,
-      artist: artistWithoutPassword, 
+      artist: artistWithoutPassword,
     });
-  
+
     await shopRepository.save(shop);
-  
+
     res.status(201).json({
       success: true,
       message: "Shop created successfully",
       data: shop,
     });
   };
-  
-  
-
 
   static updateShop: ExpressHandler = errorHandler(
-    async (req: Request, res: Response) => {
-      await body("shop_name").optional().trim().notEmpty().run(req);
-      await body("description").optional().trim().run(req);
-      await body("category_id").optional().isInt().run(req);
+    async (req: Request, res: Response):Promise<any> => {
+    // Validate specific fields in the request body
+    await Promise.all([
+      body("shop_name").optional().trim().notEmpty().run(req),
+      body("description").optional().trim().run(req),
+      body("category_id").optional().isInt().run(req),
+    ]);
 
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        res.status(400).json({
-          success: false,
-          error: "Validation failed",
-          data: errors.array(),
-        });
-        return;
-      }
-
-      const shop_id = req.params.id;
-      const { shop_name, description, category_id } = req.body;
-      const icon = req.file; 
-
-      const shop = await shopRepository.findOne({
-        where: { shop_id: Number(shop_id) }, 
-        relations: ["category"],
-      });
-
-      if (!shop) {
-        res.status(404).json({
-          success: false,
-          error: "Shop not found",
-        });
-        return;
-      }
-
-      if (shop_name) shop.shop_name = shop_name;
-      if (description) shop.description = description;
-
-      if (category_id) {
-        const category = await categoryRepository.findOne({
-          where: { category_id },
-        });
-        if (!category) {
-          res.status(404).json({
-            success: false,
-            error: "Category not found",
-          });
-          return;
-        }
-        shop.category = category;
-      }
-
-      if (icon) {
-        const uploadedIcon = await UploadToCloud(icon, res);
-        shop.icon = (uploadedIcon as any).secure_url;
-      }
-
-      await shopRepository.save(shop);
-
-      res.status(200).json({
-        success: true,
-        message: "Shop updated successfully",
-        data: shop,
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        error: "Validation failed",
+        data: errors.array(),
       });
     }
-  );
-  
+
+    const shop_id = Number(req.params.id);
+    const { category_id } = req.body;
+    const { icon, banner } = req.files as any;
+    const shop = await shopRepository.findOne({ where: { shop_id }, relations: ["category"] });
+    if (!shop) {
+      return res.status(404).json({ success: false, error: "Shop not found" });
+    }
+
+    Object.assign(shop, req.body);
+
+    if (category_id) {
+      const category = await categoryRepository.findOne({ where: { category_id } });
+      if (!category) {
+        return res.status(404).json({ success: false, error: "Category not found" });
+      }
+      shop.category = category;
+    }
+    if (icon) {
+      const uploadedIcon = await UploadToCloud(icon[0], res);
+      shop.icon = (uploadedIcon as any).secure_url;
+    }
+    if (banner) {
+      const uploadedBanner = await UploadToCloud(banner[0], res) as any;
+      shop.banner = uploadedBanner?.secure_url;
+    }
+
+    await shopRepository.save(shop);
+
+    res.status(200).json({
+      success: true,
+      message: "Shop updated successfully",
+      data: shop,
+    });
+  });
+
+
   static getAllShops: ExpressHandler = errorHandler(
     async (req: Request, res: Response) => {
       const page = parseInt(req.query.page as string) || 1;
@@ -190,6 +184,23 @@ class ShopController {
       });
     }
   );
+  static deleteShop: ExpressHandler = errorHandler(
+    async (req: Request, res: Response) => {
+      const shopId = parseInt(req.params.id, 10);
+
+      if (isNaN(shopId)) {
+        res.status(400).json({
+          success: false,
+          error: "Invalid shop ID format",
+        })
+      }
+      else {
+        res.status(200).json({
+          success: true,
+          message: "Shop deleted successfully",
+        })
+      }
+    });
 
   static getShopById: ExpressHandler = errorHandler(
     async (req: Request, res: Response) => {

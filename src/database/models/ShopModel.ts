@@ -24,6 +24,30 @@ export default class ShopModel {
   @Column({ nullable: true })
   description: string;
 
+  @Column({ default: 0 })
+  rating: number;
+
+  @Column({default:'Active'})
+  status: "Active" | "Inactive"
+
+  @Column({nullable: true})
+  address: string;
+
+  @Column({nullable: true})
+  banner: string;
+
+  @Column({nullable: true})
+  contact: string;
+
+  @Column({default:"09:00 AM",nullable: true})
+  opening_hours: string;
+
+  @Column({ default: 0 })
+  orders: number;
+
+  @Column({ default: 0 })
+  views: number;
+
   @ManyToOne(() => CategoryModel, (category) => category.shops)
   category: CategoryModel;
 
