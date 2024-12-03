@@ -100,10 +100,12 @@ export default class RoleController {
         try {
             const roleId = req.params.id;
             if (roleId) {
-                const role = await RoleRepository.findOne({ where: { id: roleId } });
+                const role = await RoleRepository.delete({ id: roleId });
                 if (role) {
-                    // await RoleRepository.delete(role);
-                    return res.status(204).json();
+                    return res.status(204).json({
+                        success:true,
+                        deleted:1
+                    });
                 }
                 else {
                     return res.status(404).json({ message: 'Role not found' });
