@@ -4,12 +4,14 @@ import {
   Column,
   OneToMany,
   CreateDateColumn,
-  UpdateDateColumn
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn
 } from 'typeorm';
 import ShopModel from './ShopModel';
 import { ProductModel } from './ProductModel';
-
-@Entity()
+import UserModel from './UserModel';
+@Entity('categories')
 export default class CategoryModel {
   @PrimaryGeneratedColumn()
   category_id: number;
@@ -20,12 +22,18 @@ export default class CategoryModel {
   @Column()
   description: string;
 
+  @Column()
+  category_icon: string;
+
   @OneToMany(() => ShopModel, (shop) => shop.category)
   shops: ShopModel[];
 
   @OneToMany(() => ProductModel, (product) => product.category)
   products: ProductModel[];
 
+  @ManyToOne(() => UserModel, user => user.categories)
+  @JoinColumn({ name: 'artist_id' })
+  artist: UserModel;
   @CreateDateColumn()
   created_at: Date;
 

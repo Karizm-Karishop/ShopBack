@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 import TrackModel from './TrackModel';
+import UserModel from './UserModel';
 
 @Entity('albums')
 class AlbumModel {
@@ -26,6 +27,12 @@ class AlbumModel {
     eager: true
   })
   tracks: TrackModel[];
+
+  @ManyToOne(() => UserModel, (user) => user.albums, {
+    nullable: false
+  })
+  @JoinColumn({ name: 'artist_id' })
+  artist: UserModel;
 }
 
 export default AlbumModel;

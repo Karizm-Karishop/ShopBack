@@ -6,23 +6,31 @@ import {
   UpdateDateColumn,
   OneToMany
 } from 'typeorm';
-import { OtpToken } from './OtpToken'
+import { OtpToken } from './OtpToken';
+import ShopModel from './ShopModel';
+import AlbumModel from './AlbumModel';
+import { ProductModel } from './ProductModel';
+import CategoryModel from './CategoryModel';
 export enum UserRole {
   ARTIST = 'artist',
   CLIENT = 'client',
   ADMIN = 'admin'
 }
-import ShopModel from './ShopModel';
+
 @Entity()
 export default class UserModel {
   @PrimaryGeneratedColumn()
   user_id: number;
+
   @Column({ type: 'timestamp', nullable: true })
   otpLockUntil: Date | null;
+
   @Column()
   firstName: string;
+
   @Column()
   lastName: string;
+
   @Column({ unique: true })
   email: string;
 
@@ -56,7 +64,7 @@ export default class UserModel {
 
   @Column({ nullable: true })
   lastPasswordReset: Date;
-  
+
   @Column({ nullable: true, unique: true })
   googleId: string;
 
@@ -74,12 +82,23 @@ export default class UserModel {
 
   @Column({ default: 0 })
   otpAttempts: number;
+
   @OneToMany(() => OtpToken, otpToken => otpToken.user)
   otpTokens: OtpToken[];
+
   id: any;
-  
+
   @OneToMany(() => ShopModel, (shop) => shop.artist)
   shops: ShopModel[]; 
+
+  @OneToMany(() => AlbumModel, (album) => album.artist)
+  albums: AlbumModel[];
+
+  @OneToMany(() => CategoryModel, (category) => category.artist)
+  categories: CategoryModel[];
+  
+  @OneToMany(() => ProductModel, (product) => product.artist)
+  products: ProductModel[];
 
   constructor(user: Partial<UserModel>) {
     Object.assign(this, user)

@@ -6,24 +6,28 @@ import {
     UpdateDateColumn,
     ManyToOne,
     OneToMany,
+    JoinColumn
   } from 'typeorm';
   import CategoryModel  from './CategoryModel';
   import ShopModel  from './ShopModel';
   import { OrderItem } from './OrderItem';
   import { WishlistItem } from './WishlistItem';
   import { CartItem } from './CartItem';
+  import UserModel from './UserModel'
   
   @Entity('products')
   export class ProductModel {
     @PrimaryGeneratedColumn()
     product_id: number;
-  
+
     @Column({ length: 255 })
     name: string;
-  
+
     @Column('text')
-    description: string;
-  
+    shortDesc: string;
+    @Column('text')
+    longDesc: string;
+
     @Column('text', { nullable: true })
     product_image: string | null;
     
@@ -38,6 +42,9 @@ import {
   
     @Column('int')
     quantity: number;
+    
+    @Column({ default: true })
+    isAvailable: boolean;
   
     @Column('simple-array')
     tags: string[];
@@ -62,4 +69,10 @@ import {
   
     @UpdateDateColumn()
     updated_at: Date;
+
+    @ManyToOne(() => UserModel, user => user.products)
+    @JoinColumn({ name: 'artist_id' })
+    artist: UserModel;
+    
+    
   }

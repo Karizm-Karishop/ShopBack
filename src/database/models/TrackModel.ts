@@ -22,15 +22,15 @@ class TrackModel {
   description: string;
 
   @Column({ nullable: true })
-  media_url: string;
+  media_url: string; 
 
   @Column('jsonb', { nullable: true })
   metadata: {
-    file: {
+    file?: {
       url: string;
       originalName: string;
-      mimetype: string;
-      size: number;
+      mimetype?: string;
+      size?: number;
     };
     artistName: string;
   };
