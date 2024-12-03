@@ -14,16 +14,20 @@
  *     requestBody:
  *       required: true
  *       content:
- *         multipart/form-data:
+ *         application/json:
  *           schema:
  *             type: object
  *             properties:
  *               name:
  *                 type: string
  *                 description: Name of the product
- *               description:
+ *               shortDesc:
  *                 type: string
- *                 description: Description of the product
+ *                 shortDesc: Description of the product
+ *                 description: Name of the product
+ *               longDesc:
+ *                 type: string
+ *                 longDesc: Description of the product
  *               sales_price:
  *                 type: number
  *                 format: float
@@ -48,14 +52,12 @@
  *                 description: Tags for the product
  *               product_image:
  *                 type: string
- *                 format: binary
- *                 description: Single image of the product
+ *                 description: URL of the product image
  *               gallery:
  *                 type: array
  *                 items:
  *                   type: string
- *                   format: binary
- *                 description: Array of images for the product gallery
+ *                 description: Array of URLs for the product gallery
  *     responses:
  *       201:
  *         description: Product created successfully
@@ -81,13 +83,15 @@
  *     requestBody:
  *       required: true
  *       content:
- *         multipart/form-data:
+ *         application/json:
  *           schema:
  *             type: object
  *             properties:
  *               name:
  *                 type: string
- *               description:
+ *               shortDesc:
+ *                 type: string
+ *               longDesc:
  *                 type: string
  *               sales_price:
  *                 type: number
@@ -107,12 +111,12 @@
  *                   type: string
  *               product_image:
  *                 type: string
- *                 format: binary
+ *                 description: URL of the product image
  *               gallery:
  *                 type: array
  *                 items:
  *                   type: string
- *                   format: binary
+ *                 description: Array of URLs for the product gallery
  *     responses:
  *       200:
  *         description: Product updated successfully

@@ -1,3 +1,5 @@
+
+// @ts-nocheck
 import { Request, Response, NextFunction } from "express";
 import { ProductModel } from "../database/models/ProductModel";
 import CategoryModel from "../database/models/CategoryModel";
@@ -5,7 +7,13 @@ import ShopModel from "../database/models/ShopModel";
 import { body, validationResult } from "express-validator";
 import dbConnection from "../database";
 import errorHandler from "../middlewares/errorHandler";
-import { UploadToCloud } from "../helpers/cloud";
+import UserModel from "../database/models/UserModel";
+
+const productRepository = dbConnection.getRepository(ProductModel);
+const categoryRepository = dbConnection.getRepository(CategoryModel);
+const shopRepository = dbConnection.getRepository(ShopModel);
+const userRepository =dbConnection.getRepository(UserModel)
+
 type ExpressHandler = (
   req: Request,
   res: Response,
@@ -13,17 +21,22 @@ type ExpressHandler = (
 ) => Promise<void>;
 class ProductController {
   static createProduct: ExpressHandler = errorHandler(
-    // @ts-ignore
     async (req: Request, res: Response) => {
       await body("name")
         .trim()
         .notEmpty()
         .withMessage("Product name is required")
         .run(req);
-      await body("description")
+      await body("longDesc")
         .trim()
         .notEmpty()
-        .withMessage("Description is required")
+        .withMessage("long Description is required")
+        .run(req);
+
+    await body("shortDesc")
+        .trim()
+        .notEmpty()
+        .withMessage("short Description is required")
         .run(req);
       await body("sales_price")
         .isFloat({ min: 0 })
@@ -49,7 +62,12 @@ class ProductController {
         .isArray()
         .withMessage("Tags must be an array")
         .run(req);
-  
+      await body("artist_id")
+        .exists().withMessage("artist_id is required")
+        .isInt({ min: 1 }).withMessage("artist_id must be a positive integer")
+        .toInt()
+        .run(req);
+
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         return res.status(400).json({
@@ -58,25 +76,38 @@ class ProductController {
           data: errors.array(),
         });
       }
+
+      const artist_id = req.body.artist_id;
+      const artist = await userRepository.findOne({
+        where: { user_id: artist_id },
+      });
+      
+      if (!artist) {
+        return res.status(404).json({
+          success: false,
+          error: "Artist not found",
+        });
+      }
+  
+      const { password, ...artistWithoutPassword } = artist;
   
       const {
         name,
-        description,
+        shortDesc,
+        longDesc,
         sales_price,
         regular_price,
         quantity,
         category_id,
         shop_id,
         tags,
+        product_image,
+        gallery,
+        isAvailable,
       } = req.body;
-  
-      const productRepository = dbConnection.getRepository(ProductModel);
-      const categoryRepository = dbConnection.getRepository(CategoryModel);
-      const shopRepository = dbConnection.getRepository(ShopModel);
-      const category = await categoryRepository.findOne({
-        where: { category_id },
-      });
 
+
+      const category = await categoryRepository.findOne({ where: { category_id } });
       if (!category) {
         return res.status(404).json({
           success: false,
@@ -84,7 +115,7 @@ class ProductController {
           message: "Category not found",
         });
       }
-  
+
       const shop = await shopRepository.findOne({ where: { shop_id } });
       if (!shop) {
         return res.status(404).json({
@@ -93,44 +124,32 @@ class ProductController {
           message: "Shop not found",
         });
       }
-  
-      let product_image: string | null = null;
-      let gallery: string[] = [];
-  
-      if (req.files) {
-        const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-  
-        if (files.product_image) {
-          const uploadResponse = await UploadToCloud(files.product_image[0], res);
-          product_image = (uploadResponse as any).secure_url;
-        }
-  
-        if (files.gallery) {
-          const galleryUploads = await Promise.all(
-            files.gallery.map((file) => UploadToCloud(file, res))
-          );
-          gallery = galleryUploads.map((upload) => (upload as any).secure_url);
-        }
-      }
-  
+
       const product = productRepository.create({
         name,
-        description,
+        shortDesc,
+        longDesc,
         sales_price,
         regular_price,
         quantity,
         category,
         shop,
         tags,
-        product_image,  
-        gallery,      
+        product_image, 
+        gallery: gallery || [], 
+        isAvailable,
+        artist: artist 
       });
-  
+
       await productRepository.save(product);
-        return res.status(201).json({
+
+      return res.status(201).json({
         success: true,
         message: "Product created successfully",
-        data: product,
+        data: {
+          ...product,
+          artist: artistWithoutPassword
+        } 
       });
     }
   );
@@ -139,70 +158,49 @@ class ProductController {
     async (req: Request, res: Response) => {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        res.status(400).json({ errors: errors.array() });
-        return;
+        return res.status(400).json({
+          success: false,
+          error: "Validation failed",
+          data: errors.array(),
+        });
       }
-  
       const productRepository = dbConnection.getRepository(ProductModel);
       const product = await productRepository.findOne({
         where: { product_id: parseInt(req.params.id) },
       });
-  
+
       if (!product) {
-        res.status(404).json({ message: "Product not found" });
-        return;
+        return res.status(404).json({ message: "Product not found" });
       }
-  
+
       if (req.body.category_id) {
         const categoryRepository = dbConnection.getRepository(CategoryModel);
         const category = await categoryRepository.findOne({
           where: { category_id: req.body.category_id },
         });
         if (!category) {
-          res.status(404).json({ message: "Category not found" });
-          return;
+          return res.status(404).json({ message: "Category not found" });
         }
         product.category = category;
       }
-  
+
       if (req.body.shop_id) {
         const shopRepository = dbConnection.getRepository(ShopModel);
         const shop = await shopRepository.findOne({
           where: { shop_id: req.body.shop_id },
         });
         if (!shop) {
-          res.status(404).json({ message: "Shop not found" });
-          return;
+          return res.status(404).json({ message: "Shop not found" });
         }
         product.shop = shop;
       }
-  
-      let product_image: string | null = product.product_image;
-      let gallery: string[] = product.gallery;
-  
-      if (req.files) {
-        const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-  
-        if (files.product_image) {
-          const uploadResponse = await UploadToCloud(files.product_image[0], res);
-          product_image = (uploadResponse as any).secure_url;
-        }
-  
-        if (files.gallery) {
-          const galleryUploads = await Promise.all(
-            files.gallery.map((file) => UploadToCloud(file, res))
-          );
-          gallery = galleryUploads.map((upload) => (upload as any).secure_url);
-        }
-      }
-  
+
       Object.assign(product, req.body);
-      product.product_image = product_image;
-      product.gallery = gallery;
-  
+
       await productRepository.save(product);
-  
-      res.status(200).json({
+
+      return res.status(200).json({
+        success: true,
         message: "Product updated successfully",
         data: product,
       });
@@ -252,6 +250,67 @@ class ProductController {
       });
     }
   );
+
+  static getAllProductArtistId: ExpressHandler = async (req, res) => {
+    const { artistId } = req.params;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    const artistIdNum = parseInt(artistId, 10);
+
+    try {
+      const artist = await userRepository.findOne({
+        where: { user_id: artistIdNum }
+      });
+
+      if (!artist) {
+        return res.status(404).json({
+          success: false,
+          error: "Artist not found",
+        });
+      }
+
+      const [products, total] = await productRepository.findAndCount({
+        where: { artist: { user_id: artistIdNum } },
+        relations: ["artist"],
+        skip,
+        take: limit,
+        order: { created_at: "DESC" },
+      });
+
+      if (!products.length) {
+        return res.status(404).json({
+          success: false,
+          error: "No products found for this artist",
+        });
+      }
+
+      const sanitizedAlproducts = products.map(product => {
+        const { password, ...artistWithoutPassword } = product.artist;
+        return {
+          ...product,
+          artist: artistWithoutPassword
+        };
+      });
+
+      res.status(200).json({
+        success: true,
+        data: {
+          products: sanitizedAlproducts,
+          pagination: {
+            current_page: page,
+            total_pages: Math.ceil(total / limit),
+            total_items: total,
+            items_per_page: limit,
+          },
+        },
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  };
+
 
   static deleteProduct: ExpressHandler = errorHandler(
     async (req: Request, res: Response) => {

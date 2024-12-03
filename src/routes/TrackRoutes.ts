@@ -5,13 +5,16 @@ import upload from '../helpers/multer';
 
 const router = Router();
 router.post(
-  '/tracks',
-  upload.single('trackFile'), 
-  TrackController.createSingleTrack
+  "/tracks/upload",
+  TrackController.createTrack
+);
+router.put(
+  "/tracks/upload",
+  TrackController.updateTrack
 );
 
 router.post(
-  '/tracks/upload',
+  '/tracks/upload-media',
   upload.array('files'), 
   TrackController.uploadMediaFiles
 );
@@ -20,6 +23,16 @@ router.post(
   '/tracks/replace',
   upload.single('file'), 
   TrackController.replaceTrackMedia
+);
+
+router.get(
+  "/tracks/:artist_id", 
+  TrackController.getAllArtistTracks
+);
+
+router.get(
+  "/tracks/single/:track_id", 
+  TrackController.getTrackById
 );
 
 router.delete('/tracks', TrackController.deleteTrack);

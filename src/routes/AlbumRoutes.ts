@@ -4,6 +4,8 @@ import upload from '../helpers/multer';
 const router = Router();
 router.post('/albums',upload.single('cover_image'), AlbumController.createAlbum);
 router.get('/albums', AlbumController.getAllAlbums);
+router.get('/albums/:artistId', AlbumController.getAllAlbumsArtistId);
+
 router.get('/albums/:id', AlbumController.getAlbumById);
 router.put('/albums/:id', upload.single('cover_image'),AlbumController.updateAlbum);
 router.delete('/albums/:id', AlbumController.deleteAlbum);
