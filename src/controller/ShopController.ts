@@ -1,12 +1,12 @@
 import { Request, Response, NextFunction } from "express";
-import ShopModel from "../database/models/ShopModel";
+import ShopModel, { ShopStatus } from "../database/models/ShopModel";
 import CategoryModel from "../database/models/CategoryModel";
 import dbConnection from "../database";
 import { body, validationResult } from "express-validator";
 import errorHandler from "../middlewares/errorHandler";
 import { UploadToCloud } from "../helpers/cloud";
 import UserModel from "../database/models/UserModel";
-
+import { sendShopStatusEmail } from "../templates/shopStatusEmail";
 const shopRepository = dbConnection.getRepository(ShopModel);
 const categoryRepository = dbConnection.getRepository(CategoryModel);
 type ExpressHandler = (
@@ -274,6 +274,202 @@ class ShopController {
             items_per_page: limit,
           },
         },
+      });
+    }
+  );
+
+  static approveShop: ExpressHandler = errorHandler(
+    async (req: Request, res: Response) => {
+      const shopId = parseInt(req.params.id, 10);
+
+      if (isNaN(shopId)) {
+        res.status(400).json({
+          success: false,
+          error: "Invalid shop ID format",
+        });
+        return;
+      }
+
+      const shop = await shopRepository.findOne({
+        where: { shop_id: shopId },
+        relations: ["artist"]
+      });
+
+      if (!shop) {
+        res.status(404).json({
+          success: false,
+          error: "Shop not found",
+        });
+        return;
+      }
+
+      shop.shop_status = ShopStatus.APPROVED;
+      await shopRepository.save(shop);
+
+      if (shop.artist && shop.artist.email) {
+        await sendShopStatusEmail(
+          shop.artist.email, 
+          `${shop.artist.firstName} ${shop.artist.lastName}`, 
+          shop.shop_name, 
+          'approved'
+        );
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Shop approved successfully",
+        data: shop,
+      });
+    }
+  );
+
+  static rejectShop: ExpressHandler = errorHandler(
+    async (req: Request, res: Response) => {
+      await body("rejection_reason")
+        .trim()
+        .notEmpty()
+        .withMessage("Rejection reason is required")
+        .run(req);
+
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({
+          success: false,
+          error: "Validation failed",
+          data: errors.array(),
+        });
+        return;
+      }
+
+      const shopId = parseInt(req.params.id, 10);
+      const { rejection_reason } = req.body;
+
+      if (isNaN(shopId)) {
+        res.status(400).json({
+          success: false,
+          error: "Invalid shop ID format",
+        });
+        return;
+      }
+
+      const shop = await shopRepository.findOne({
+        where: { shop_id: shopId },
+        relations: ["artist"]
+      });
+
+      if (!shop) {
+        res.status(404).json({
+          success: false,
+          error: "Shop not found",
+        });
+        return;
+      }
+
+      shop.shop_status = ShopStatus.REJECTED;
+      shop.rejection_reason = rejection_reason;
+      await shopRepository.save(shop);
+
+      if (shop.artist && shop.artist.email) {
+        await sendShopStatusEmail(
+          shop.artist.email, 
+          `${shop.artist.firstName} ${shop.artist.lastName}`, 
+          shop.shop_name, 
+          'rejected', 
+          rejection_reason
+        );
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Shop rejected successfully",
+        data: shop,
+      });
+    }
+  );
+
+  static getApprovedShops: ExpressHandler = errorHandler(
+    async (req: Request, res: Response) => {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const offset = (page - 1) * limit;
+
+      const [shops, total] = await shopRepository.findAndCount({
+        where: { shop_status: ShopStatus.APPROVED },
+        relations: ["artist", "category"],
+        skip: offset,
+        take: limit,
+        order: { created_at: "DESC" }
+      });
+
+      res.status(200).json({
+        success: true,
+        message: "Approved shops retrieved successfully",
+        data: {
+          shops,
+          pagination: {
+            total,
+            page,
+            pages: Math.ceil(total / limit)
+          }
+        }
+      });
+    }
+  );
+
+  static getRejectedShops: ExpressHandler = errorHandler(
+    async (req: Request, res: Response) => {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const offset = (page - 1) * limit;
+
+      const [shops, total] = await shopRepository.findAndCount({
+        where: { shop_status: ShopStatus.REJECTED },
+        relations: ["artist", "category"],
+        skip: offset,
+        take: limit,
+        order: { updated_at: "DESC" }
+      });
+
+      res.status(200).json({
+        success: true,
+        message: "Rejected shops retrieved successfully",
+        data: {
+          shops,
+          pagination: {
+            total,
+            page,
+            pages: Math.ceil(total / limit)
+          }
+        }
+      });
+    }
+  );
+
+  static getPendingShops: ExpressHandler = errorHandler(
+    async (req: Request, res: Response) => {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const offset = (page - 1) * limit;
+
+      const [shops, total] = await shopRepository.findAndCount({
+        where: { shop_status: ShopStatus.PENDING },
+        relations: ["artist", "category"],
+        skip: offset,
+        take: limit,
+        order: { created_at: "DESC" }
+      });
+
+      res.status(200).json({
+        success: true,
+        message: "Pending shops retrieved successfully",
+        data: {
+          shops,
+          pagination: {
+            total,
+            page,
+            pages: Math.ceil(total / limit)
+          }
+        }
       });
     }
   );

@@ -15,7 +15,8 @@ import TrackRoutes from "./routes/TrackRoutes"
 import transactionRoutes from './routes/TransactionRoutes';
 import notificationsRoutes from './routes/NotificationRoutes';
 import NotificationController from'./controller/NotificationController';
-import ProductRoutes from './routes/ProductRoutes'
+import ProductRoutes from './routes/ProductRoutes';
+import BookRoutes from './routes/BooksRoutes';
 const app: Application = express();
 
 NotificationController.initializeEmitter();
@@ -40,6 +41,7 @@ app.use('/api/roles/', roleRoutes);
 app.use('/api/transactions/', transactionRoutes);
 app.use('/api/notifications/',notificationsRoutes);
 app.use('/api/permissions/', permissionsRoutes);
+app.use('/api/',BookRoutes)
 app.get('/', (req: Request, res: Response) => {
   res.status(200).json({ message: 'Welcome To The Kari shop Backend Api' });
 });

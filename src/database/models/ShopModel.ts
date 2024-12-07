@@ -10,6 +10,13 @@ import {
 import CategoryModel from './CategoryModel';
 import { ProductModel } from './ProductModel';
 import UserModel from './UserModel';
+
+export enum ShopStatus {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected'
+}
+
 @Entity()
 export default class ShopModel {
   @PrimaryGeneratedColumn()
@@ -26,6 +33,13 @@ export default class ShopModel {
 
   @Column({ default: 0 })
   rating: number;
+
+  @Column({
+    type: 'enum',
+    enum: ShopStatus,
+    default: ShopStatus.PENDING
+  })
+  shop_status: ShopStatus;
 
   @Column({default:'Active'})
   status: "Active" | "Inactive"
@@ -48,13 +62,16 @@ export default class ShopModel {
   @Column({ default: 0 })
   views: number;
 
+  @Column({ nullable: true })
+  rejection_reason: string;
+
   @ManyToOne(() => CategoryModel, (category) => category.shops)
   category: CategoryModel;
 
   @OneToMany(() => ProductModel, (product) => product.shop)
   products: ProductModel[];
 
-  @ManyToOne(() => UserModel, (user) => user.shops, { onDelete: 'CASCADE' }) // New relation
+  @ManyToOne(() => UserModel, (user) => user.shops, { onDelete: 'CASCADE' })
   artist: UserModel;
 
   @CreateDateColumn()
@@ -63,4 +80,3 @@ export default class ShopModel {
   @UpdateDateColumn()
   updated_at: Date;
 }
-

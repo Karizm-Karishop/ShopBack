@@ -1,4 +1,6 @@
+
 // @ts-nocheck
+
 import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -22,6 +24,24 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS,
   }
 });
+const calculateProfileCompleteness = (user: any): number => {
+  const fields = [
+    'firstName',
+    'lastName',
+    'email',
+    'phone_number',
+    'address',
+    'profile_picture',
+    'gender',
+    'biography',
+    'socialLinks',
+    'genres',
+  ];
+
+  const filledFields = fields.filter((field) => user[field]);
+  const completeness = (filledFields.length / fields.length) * 100;
+  return Math.round(completeness);
+};
 
 const sendConfirmationEmail = (email: string, firstName: string, userId: number) => {
   const confirmationLink = `${process.env.APP_URL}/api/user/confirm-email/${userId}`;
@@ -289,7 +309,11 @@ static login: ExpressHandler = errorHandler(async (req: Request, res: Response) 
     await body('firstName').optional().trim().notEmpty().run(req);
     await body('lastName').optional().trim().notEmpty().run(req);
     await body('email').optional().isEmail().run(req);
-
+    await body('phone_number').optional().trim().run(req);
+    await body('address').optional().trim().run(req);
+    await body('gender').optional().trim().run(req);
+    await body('biography').optional().trim().run(req);
+  
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({
@@ -299,8 +323,20 @@ static login: ExpressHandler = errorHandler(async (req: Request, res: Response) 
       });
       return;
     }
-
-    const { firstName, lastName, email } = req.body;
+  
+    const { 
+      firstName, 
+      lastName, 
+      email, 
+      phone_number,
+      address, 
+      gender, 
+      socialLinks, 
+      biography, 
+      genres,
+      profile_picture 
+    } = req.body;
+  
     const userId = parseInt(req.params.id, 10);
     
     if (isNaN(userId)) {
@@ -311,16 +347,9 @@ static login: ExpressHandler = errorHandler(async (req: Request, res: Response) 
       });
       return;
     }
+  
 
-    if ((req as any).user?.userId !== userId && (req as any).user?.role !== UserRole.ADMIN) {
-      res.status(403).json({
-        success: false,
-        error: 'Forbidden',
-        message: 'You do not have permission to update this profile'
-      });
-      return;
-    }
-
+  
     const user = await userRepository.findOne({ where: { user_id: userId } });
     if (!user) {
       res.status(404).json({
@@ -330,7 +359,7 @@ static login: ExpressHandler = errorHandler(async (req: Request, res: Response) 
       });
       return;
     }
-
+  
     if (email && email !== user.email) {
       const emailExists = await userRepository.findOne({ where: { email } });
       if (emailExists) {
@@ -342,12 +371,31 @@ static login: ExpressHandler = errorHandler(async (req: Request, res: Response) 
         return;
       }
     }
-
-    user.firstName = user.firstName;
-    user.lastName = user.lastName;
+  
+    user.firstName = firstName || user.firstName;
+    user.lastName = lastName || user.lastName;
     user.email = email || user.email;
+    user.phone_number = phone_number || user.phone_number;
+    user.address = address || user.address;
+    user.gender = gender || user.gender;
+    user.biography = biography || user.biography;
+    user.profile_picture = profile_picture || user.profile_picture;
+  
+    if (socialLinks) {
+      user.socialLinks = {
+        twitter: socialLinks.twitter || user.socialLinks?.twitter,
+        linkedin: socialLinks.linkedin || user.socialLinks?.linkedin,
+        facebook: socialLinks.facebook || user.socialLinks?.facebook,
+        google: socialLinks.google || user.socialLinks?.google
+      };
+    }
+  
+    if (genres) {
+      user.genres = genres;
+    }
+  
     user.updated_at = new Date();
-
+  
     await userRepository.save(user);
     
     res.status(200).json({
@@ -361,16 +409,16 @@ static login: ExpressHandler = errorHandler(async (req: Request, res: Response) 
 
   static getProfileById: ExpressHandler = errorHandler(async (req: Request, res: Response) => {
     const userId = parseInt(req.params.id, 10);
-    
+  
     if (isNaN(userId)) {
       res.status(400).json({
         success: false,
         error: 'Invalid input',
-        message: 'Invalid user ID format'
+        message: 'Invalid user ID format',
       });
       return;
     }
-
+  
     const user = await userRepository.findOne({
       where: { user_id: userId },
       select: [
@@ -384,24 +432,66 @@ static login: ExpressHandler = errorHandler(async (req: Request, res: Response) 
         'profile_picture',
         'gender',
         'created_at',
-        'updated_at'
-      ]
+        'updated_at',
+        'biography',
+        'socialLinks',
+        'genres',
+      ],
     });
-
+  
     if (!user) {
       res.status(404).json({
         success: false,
         error: 'Not found',
-        message: 'User not found'
+        message: 'User not found',
       });
       return;
     }
-
+  
+    const profileCompleteness = calculateProfileCompleteness(user);
+  
     res.status(200).json({
       success: true,
-      data: { user }
+      data: {
+        user: excludePassword(user),
+        profileCompleteness,
+      },
     });
   });
+  
+  
+  // Helper function to calculate profile completeness
+  const calculateProfileCompleteness = (user: UserModel): number => {
+    let completenessScore = 0;
+    const maxScore = 100;
+  
+    // Basic info
+    if (user.firstName) completenessScore += 10;
+    if (user.lastName) completenessScore += 10;
+    if (user.email) completenessScore += 10;
+    if (user.phone_number) completenessScore += 10;
+    if (user.address) completenessScore += 10;
+  
+    // Profile details
+    if (user.profile_picture) completenessScore += 10;
+    if (user.biography) completenessScore += 10;
+  
+    // Social links
+    const socialLinksCount = [
+      user.socialLinks?.twitter,
+      user.socialLinks?.linkedin, 
+      user.socialLinks?.facebook, 
+      user.socialLinks?.google
+    ].filter(link => link).length;
+    completenessScore += Math.min(socialLinksCount * 5, 20);
+  
+    // Genres for artists
+    if (user.genres && user.genres.length > 0) {
+      completenessScore += 10;
+    }
+  
+    return Math.min(completenessScore, maxScore);
+  };
   static requestPasswordReset: ExpressHandler = errorHandler(async (req: Request, res: Response) => {
     const { email } = req.body;
   

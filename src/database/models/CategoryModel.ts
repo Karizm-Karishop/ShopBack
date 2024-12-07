@@ -22,7 +22,7 @@ export default class CategoryModel {
   @Column()
   description: string;
 
-  @Column()
+  @Column({ nullable: true })
   category_icon: string;
 
   @OneToMany(() => ShopModel, (shop) => shop.category)

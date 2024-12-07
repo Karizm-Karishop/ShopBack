@@ -9,7 +9,7 @@ router.post(
   TrackController.createTrack
 );
 router.put(
-  "/tracks/upload",
+  "/tracks/:id",
   TrackController.updateTrack
 );
 
@@ -33,6 +33,10 @@ router.get(
 router.get(
   "/tracks/single/:track_id", 
   TrackController.getTrackById
+);
+router.delete(
+  "/tracks/single/:id", 
+  TrackController.deleteTrackById
 );
 
 router.delete('/tracks', TrackController.deleteTrack);

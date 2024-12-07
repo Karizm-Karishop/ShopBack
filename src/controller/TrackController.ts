@@ -4,7 +4,7 @@ import TrackModel from "../database/models/TrackModel";
 import AlbumModel from "../database/models/AlbumModel";
 import dbConnection from "../database";
 import { UploadToCloud } from "../helpers/cloud";
-import { body, validationResult } from "express-validator";
+import { body, validationResult,param } from "express-validator";
 import UserModel from "../database/models/UserModel";
 
 const trackRepository = dbConnection.getRepository(TrackModel);
@@ -367,114 +367,60 @@ class TrackController {
     }
   };
 
-static updateTrack = async (req: Request, res: Response): Promise<void> => {
-  try {
-    console.log("Update Track Request Body:", req.body);
-
-    await body("track_id")
-      .exists().withMessage("track_id is required")
-      .isInt({ min: 1 }).withMessage("track_id must be a positive integer")
-      .toInt()
-      .run(req);
-
-    if (req.body.album_id) {
-      await body("album_id")
-        .optional()
-        .isInt({ min: 1 }).withMessage("album_id must be a positive integer")
-        .toInt()
-        .run(req);
-    }
-
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      console.log("Validation Errors:", errors.array());
-      res.status(400).json({ errors: errors.array() });
-      return;
-    }
-
-    const { track_id } = req.body;
-
-    const existingTrack = await trackRepository.findOne({ 
-      where: { id: track_id },
-      relations: ['album']
-    });
-
-    if (!existingTrack) {
-      res.status(404).json({
-        success: false,
-        message: "Track not found",
-      });
-      return;
-    }
-
-    const updateData: Partial<TrackModel> = {};
-
-    const updateFields = [
-      'title', 'artist', 'genre', 'description', 'release_date', 'media_url'
-    ];
-
-    updateFields.forEach(field => {
-      if (req.body[field] !== undefined) {
-        switch (field) {
-          case 'title':
-          case 'artist':
-          case 'genre':
-          case 'description':
-            updateData[field] = req.body[field].trim();
-            break;
-          case 'release_date':
-            updateData[field] = new Date(req.body[field]);
-            break;
-          case 'media_url':
-            updateData[field] = req.body[field];
-            break;
-        }
+  static updateTrack = async (req: Request, res: Response): Promise<void> => {
+    try {
+      await param("id").isInt().withMessage("Invalid track ID").toInt().run(req);
+  
+      await body("title").optional().isString().withMessage("Title must be a string").run(req);
+      await body("genre").optional().isString().withMessage("Genre must be a string").run(req);
+      await body("description").optional().isString().withMessage("Description must be a string").run(req);
+      await body("release_date").optional().isISO8601().toDate().withMessage("Invalid release date").run(req);
+      await body("media_url").optional().isURL().withMessage("Invalid media URL").run(req);
+  
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({ success: false, errors: errors.array() });
+        return;
       }
-    });
-
-    if (req.body.album_id) {
-      const album = await albumRepository.findOne({ 
-        where: { id: req.body.album_id } 
-      });
-
-      if (!album) {
-        res.status(400).json({
+  
+      const { id } = req.params;
+      const { title, genre, description, release_date, media_url } = req.body;
+  
+      const track = await trackRepository.findOne({ where: { id: Number(id) } });
+  
+      if (!track) {
+        res.status(404).json({
           success: false,
-          message: "Invalid album_id. Album does not exist.",
+          message: "Track not found",
         });
         return;
       }
-
-      updateData.album = album;
+  
+      // Update track fields if provided
+      if (title) track.title = title.trim();
+      if (genre) track.genre = genre.trim();
+      if (description) track.description = description.trim();
+      if (release_date) track.release_date = new Date(release_date);
+      if (media_url) track.media_url = media_url.trim();
+  
+      // Save updated track
+      const updatedTrack = await trackRepository.save(track);
+  
+      res.status(200).json({
+        success: true,
+        message: "Track updated successfully",
+        data: updatedTrack,
+      });
+    } catch (error: any) {
+      console.error("Error in updateTrack:", error);
+      res.status(500).json({
+        success: false,
+        message: "An error occurred while updating the track",
+        error: error.message || "Unknown error",
+      });
     }
-
-    if (req.body.metadata) {
-      updateData.metadata = {
-        ...existingTrack.metadata,
-        ...req.body.metadata
-      };
-    }
-
-    const updatedTrack = await trackRepository.save({
-      ...existingTrack,
-      ...updateData
-    });
-
-    res.status(200).json({
-      success: true,
-      message: "Track updated successfully",
-      data: updatedTrack,
-    });
-
-  } catch (error) {
-    console.error("Error in updateTrack:", error);
-    res.status(500).json({
-      success: false,
-      message: "An error occurred while updating the track",
-      error: error.message || 'Unknown error',
-    });
-  }
-};
+  };
+  
 
 static getAllArtistTracks = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -557,6 +503,47 @@ static getTrackById = async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({
       success: false,
       message: "An error occurred while fetching the track",
+      error: error.message || 'Unknown error'
+    });
+  }
+};
+
+
+static deleteTrackById: ExpressHandler = async (req, res) => {
+  await param('id').isInt().run(req);
+
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    res.status(400).json({
+      success: false,
+      error: 'Validation failed',
+      data: errors.array()
+    });
+    return;
+  }
+
+  const { id } = req.params;
+
+  try {
+    const result = await trackRepository.delete(id);
+    if (result.affected === 0) {
+      res.status(404).json({
+        success: false,
+        message: 'Track not found',
+        data: null
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Track deleted successfully',
+      data: { deletedCount: result.affected }
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: "An error occurred while deleting the track",
       error: error.message || 'Unknown error'
     });
   }

@@ -11,6 +11,7 @@ import ShopModel from './ShopModel';
 import AlbumModel from './AlbumModel';
 import { ProductModel } from './ProductModel';
 import CategoryModel from './CategoryModel';
+import BookModel from './BookModel'
 export enum UserRole {
   ARTIST = 'artist',
   CLIENT = 'client',
@@ -56,6 +57,21 @@ export default class UserModel {
   @Column({ nullable: true })
   gender: string;
 
+  @Column({ nullable: true })
+  biography: string;
+
+  @Column({ type: 'simple-array', nullable: true })
+  genres: string[];
+
+
+  @Column({ type: 'json', nullable: true })
+  socialLinks: {
+    twitter: string;
+    linkedin: string;
+    facebook: string;
+    google: string;
+  };
+
   @CreateDateColumn()
   created_at: Date;
 
@@ -99,6 +115,9 @@ export default class UserModel {
   
   @OneToMany(() => ProductModel, (product) => product.artist)
   products: ProductModel[];
+
+  @OneToMany(() => BookModel, (book) => book.artist)
+  books: BookModel[];
 
   constructor(user: Partial<UserModel>) {
     Object.assign(this, user)

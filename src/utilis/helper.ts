@@ -6,18 +6,17 @@ dotenv.config();
 interface EmailOptions {
   to: string;
   subject: string;
-  text: string;
+  text?: string;
   html?: string;
 }
 
-const transporter = nodemailer.createTransport({
+export const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   }
 });
-
 
 export const generateOTP = (length: number = 6): string => {
   const digits = '0123456789';
@@ -29,7 +28,6 @@ export const generateOTP = (length: number = 6): string => {
   
   return otp;
 };
-
 
 export const sendEmail = async (options: EmailOptions): Promise<any> => {
   try {
@@ -49,12 +47,10 @@ export const sendEmail = async (options: EmailOptions): Promise<any> => {
   }
 };
 
-
 export const isValidEmail = (email: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 };
-
 
 export const formatDate = (date: Date): string => {
   return date.toLocaleDateString('en-US', {
@@ -65,7 +61,6 @@ export const formatDate = (date: Date): string => {
     minute: '2-digit'
   });
 };
-
 
 export const generateRandomString = (length: number = 32): string => {
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -78,7 +73,6 @@ export const generateRandomString = (length: number = 32): string => {
   return result;
 };
 
-
 export const safeJSONParse = (json: string): any => {
   try {
     return JSON.parse(json);
@@ -88,11 +82,9 @@ export const safeJSONParse = (json: string): any => {
   }
 };
 
-
 export const delay = (ms: number): Promise<void> => {
   return new Promise(resolve => setTimeout(resolve, ms));
 };
-
 
 export const sanitizeString = (str: string): string => {
   return str.replace(/[^a-zA-Z0-9 ]/g, '');
