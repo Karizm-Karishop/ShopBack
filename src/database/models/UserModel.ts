@@ -12,6 +12,7 @@ import AlbumModel from './AlbumModel';
 import { ProductModel } from './ProductModel';
 import CategoryModel from './CategoryModel';
 import BookModel from './BookModel'
+import NotificationModel from './NotificationModel';
 export enum UserRole {
   ARTIST = 'artist',
   CLIENT = 'client',
@@ -118,6 +119,9 @@ export default class UserModel {
 
   @OneToMany(() => BookModel, (book) => book.artist)
   books: BookModel[];
+  
+  @OneToMany(() => NotificationModel, (notification) => notification.user)
+  notifications: NotificationModel[]; 
 
   constructor(user: Partial<UserModel>) {
     Object.assign(this, user)

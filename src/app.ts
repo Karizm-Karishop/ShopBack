@@ -13,13 +13,11 @@ import AlbumRoutes from './routes/AlbumRoutes'
 import CartRoutes from './routes/CartRoutes'
 import TrackRoutes from "./routes/TrackRoutes"
 import transactionRoutes from './routes/TransactionRoutes';
-import notificationsRoutes from './routes/NotificationRoutes';
-import NotificationController from'./controller/NotificationController';
+import NotificationRoutes from'./routes/notificationRoutes';
 import ProductRoutes from './routes/ProductRoutes';
 import BookRoutes from './routes/BooksRoutes';
 const app: Application = express();
 
-NotificationController.initializeEmitter();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -39,7 +37,7 @@ app.use('/api/', CartRoutes);
 app.use('/api/', ProductRoutes);
 app.use('/api/roles/', roleRoutes);
 app.use('/api/transactions/', transactionRoutes);
-app.use('/api/notifications/',notificationsRoutes);
+app.use('/api/',NotificationRoutes);
 app.use('/api/permissions/', permissionsRoutes);
 app.use('/api/',BookRoutes)
 app.get('/', (req: Request, res: Response) => {

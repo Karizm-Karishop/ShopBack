@@ -143,34 +143,48 @@ class ShopController {
     });
 
 
-  static getAllShops: ExpressHandler = errorHandler(
-    async (req: Request, res: Response) => {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 10;
-      const skip = (page - 1) * limit;
-
-      const [shops, total] = await shopRepository.findAndCount({
-        relations: ["category"],
-        skip,
-        take: limit,
-        order: { created_at: "DESC" },
-      });
-
-      res.status(200).json({
-        success: true,
-        data: {
-          shops,
-          pagination: {
-            current_page: page,
-            total_pages: Math.ceil(total / limit),
-            total_items: total,
-            items_per_page: limit,
+    static getAllShops: ExpressHandler = errorHandler(
+      async (req: Request, res: Response) => {
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 10;
+        const skip = (page - 1) * limit;
+    
+        const [shops, total] = await shopRepository.findAndCount({
+          relations: ["category", "artist"],
+          select: {
+            artist: {
+              user_id: true,
+              firstName: true,
+              lastName: true,
+            },
+            category: true
           },
-        },
-      });
-    }
-  );
-
+          skip,
+          take: limit,
+          order: { created_at: "DESC" },
+        });
+    
+        // Transform shops to include firstName and lastName
+        const shopsWithArtistDetails = shops.map(shop => ({
+          ...shop,
+          artist_first_name: shop.artist?.firstName || null,
+          artist_last_name: shop.artist?.lastName || null,
+        }));
+    
+        res.status(200).json({
+          success: true,
+          data: {
+            shops: shopsWithArtistDetails,
+            pagination: {
+              current_page: page,
+              total_pages: Math.ceil(total / limit),
+              total_items: total,
+              items_per_page: limit,
+            },
+          },
+        });
+      }
+    );
   static deleteAllShops: ExpressHandler = errorHandler(
     async (_req: Request, res: Response) => {
       const deleteResult = await shopRepository.delete({});

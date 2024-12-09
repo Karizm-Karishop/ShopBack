@@ -20,6 +20,7 @@ router.delete('/delete/shops', authorize([UserRole.ADMIN]), ShopController.delet
 router.delete('/shops/:id', authorize([UserRole.ARTIST, UserRole.ADMIN]), ShopController.deleteShop);
 router.get('/shops/:id', ShopController.getShopById);
 router.get('/shops/artist/:artist_id', ShopController.getShopsByArtistId);
+
 router.put(
     '/approve/:id', 
     ShopController.approveShop
