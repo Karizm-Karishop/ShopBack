@@ -16,6 +16,7 @@ import transactionRoutes from './routes/TransactionRoutes';
 import notificationsRoutes from './routes/NotificationRoutes';
 import NotificationController from'./controller/NotificationController';
 import ProductRoutes from './routes/ProductRoutes'
+import WishlistRoutes from './routes/WishlistRoutes'
 const app: Application = express();
 
 NotificationController.initializeEmitter();
@@ -28,8 +29,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use('/api/user/',userRoutes);
-app.use('/api/roles/', roleRoutes);
-app.use('/api/permissions/', permissionsRoutes);
 app.use('/api/', CategoryRoutes);
 app.use('/api/', ShopsRoutes);
 app.use('/api/', AlbumRoutes);
@@ -37,6 +36,7 @@ app.use('/api/', TrackRoutes);
 app.use('/api/', CartRoutes);
 app.use('/api/', ProductRoutes);
 app.use('/api/roles/', roleRoutes);
+app.use('/api/wishlist/', WishlistRoutes);
 app.use('/api/transactions/', transactionRoutes);
 app.use('/api/notifications/',notificationsRoutes);
 app.use('/api/permissions/', permissionsRoutes);
