@@ -9,6 +9,8 @@ router.get('/all-roles', RoleController.getAllRoles);
 
 router.get('/role/:id', RoleController.getRoleById);
 
+router.delete('/delete-role/:id', RoleController.deleteRole)
+
 router.patch('/update-role/:id', RoleController.updateRole);
 
 export default router;
