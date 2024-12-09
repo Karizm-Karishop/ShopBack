@@ -34,8 +34,7 @@ class CartController {
         return;
       }
 
-      const { product_id, quantity } = req.body;
-      const user_id = req.user?.id;
+      const { product_id, quantity, user_id } = req.body;
       if (!user_id) {
         res.status(401).json({ message: "User not authenticated" });
         return;
@@ -93,11 +92,11 @@ class CartController {
 
   static getCart: ExpressHandler = errorHandler(
     async (req: Request, res: Response) => {
-      const user_id = req.user.id;
-
+      const user_id = req.params.id;
+      console.log(user_id)
       const cartItemRepository = dbConnection.getRepository(CartItem);
       const cartItems = await cartItemRepository.find({
-        where: { user: { id: user_id } } as any,
+        where: { user: { user_id: user_id } } as any,
         relations: ['product']
       });
 
@@ -124,15 +123,14 @@ class CartController {
         return;
       }
 
-      const { quantity } = req.body;
+      const { quantity,user_id } = req.body;
       const cartItemId = parseInt(req.params.id);
-      const user_id = req.user.id;
 
       const cartItemRepository = dbConnection.getRepository(CartItem);
       const cartItem = await cartItemRepository.findOne({
         where: { 
           id: cartItemId,
-          user: { id: user_id }
+          user: { user_id: user_id }
         } as any,
         relations: ['product']
       });
@@ -160,13 +158,10 @@ class CartController {
   static removeFromCart: ExpressHandler = errorHandler(
     async (req: Request, res: Response) => {
       const cartItemId = parseInt(req.params.id);
-      const user_id = req.user.id;
-
       const cartItemRepository = dbConnection.getRepository(CartItem);
       const cartItem = await cartItemRepository.findOne({
         where: { 
-          id: cartItemId,
-          user: { id: user_id }
+          id: cartItemId
         } as any
       });
 
